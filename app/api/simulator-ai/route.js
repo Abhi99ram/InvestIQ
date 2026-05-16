@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateText } from '../../../lib/groq'; // assuming this exists or I will write standard fetch
+
 
 export async function POST(request) {
   try {
