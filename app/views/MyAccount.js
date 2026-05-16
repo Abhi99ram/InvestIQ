@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function MyAccount({ user, onUpdateUser }) {
+export default function MyAccount({ user, onUpdateUser, onLogout }) {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [mobile, setMobile] = useState(user?.mobile || '');
@@ -55,6 +55,35 @@ export default function MyAccount({ user, onUpdateUser }) {
     } finally {
       setLoading(false);
     }
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Are you absolutely sure you want to delete your account? This action cannot be undone and you will lose all saved alerts and watchlists.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/user/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetEmail: user.email })
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Clean up local storage
+        const suffix = `_${user.email}`;
+        ['iq_watchlist', 'iq_alerts', 'iq_sector_alerts', 'iq_news_alerts'].forEach(key => {
+          localStorage.removeItem(key + suffix);
+        });
+        alert('Your account has been deleted.');
+        onLogout();
+      } else {
+        setError(data.error || 'Failed to delete account');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError('A network error occurred while deleting account.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -101,14 +130,25 @@ export default function MyAccount({ user, onUpdateUser }) {
           {error && <div style={{ color: 'var(--accent-red)', marginBottom: '15px' }}>{error}</div>}
           {message && <div style={{ color: 'var(--accent-cyan)', marginBottom: '15px' }}>{message}</div>}
 
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
-            disabled={loading}
-            style={{ width: '100%' }}
-          >
-            {loading ? 'Saving...' : 'Save Changes'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, marginTop: 15 }}>
+            <button 
+              type="submit" 
+              className="btn btn-primary" 
+              disabled={loading}
+              style={{ flex: 1 }}
+            >
+              {loading ? 'Processing...' : 'Save Changes'}
+            </button>
+            <button 
+              type="button" 
+              className="btn" 
+              disabled={loading}
+              onClick={handleDeleteAccount}
+              style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--accent-red)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              Delete Account
+            </button>
+          </div>
         </form>
       </div>
     </div>

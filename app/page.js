@@ -83,7 +83,7 @@ export default function Home() {
       case 'watchlist': return <Watchlist onSelectStock={selectStock} setNotifCount={setNotifCount} user={user} />;
       case 'analysis': return <Analysis selectedSymbol={selectedSymbol} onSelectStock={selectStock} />;
       case 'news': return <NewsFeed />;
-      case 'account': return <MyAccount user={user} onUpdateUser={handleUpdateUser} />;
+      case 'account': return <MyAccount user={user} onUpdateUser={handleUpdateUser} onLogout={handleLogout} />;
       default: return <Dashboard onSelectStock={selectStock} onSelectSector={viewSector} />;
     }
   };

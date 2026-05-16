@@ -87,6 +87,26 @@ export default function Admin() {
     }
   };
 
+  const handleDelete = async (userToDelete) => {
+    if (!window.confirm(`Are you sure you want to delete ${userToDelete.email}? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch('/api/user/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetEmail: userToDelete.email })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('User deleted successfully');
+        fetchUsers(false);
+      } else {
+        alert(data.error || 'Failed to delete user');
+      }
+    } catch (err) {
+      alert('Network error while deleting user');
+    }
+  };
+
   return (
     <div style={{ padding: '20px' }}>
       <div className="section-header">
@@ -127,6 +147,9 @@ export default function Admin() {
                       </button>
                       <button className="btn btn-sm btn-secondary" onClick={() => handleEditClick(u)}>
                         Edit
+                      </button>
+                      <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => handleDelete(u)}>
+                        Delete
                       </button>
                     </div>
                   </td>
