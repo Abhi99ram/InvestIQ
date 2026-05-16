@@ -101,8 +101,8 @@ export async function POST(request) {
       const info = await transporter.sendMail({
         from: '"InvestIQ Alerts" <' + fromAddr + '>',
         to: recipientEmail,
-        subject: \`InvestIQ Alert: \${symbol}\`,
-        text: \`Hello \${recipientEmail.split('@')[0]},\n\nInvestIQ Alert Triggered for \${symbol}!\n\n\${message}\n\nTriggered at: \${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST\n\nInvestIQ — Your Financial Intelligence Hub\n\n---\nTo ensure delivery of future alerts, please add this email address to your contacts.\nYou are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to unsubscribe, you can delete your alert or account via the Support tab.\`,
+        subject: `InvestIQ Alert: ${symbol}`,
+        text: `Hello ${recipientEmail.split('@')[0]},\n\nInvestIQ Alert Triggered for ${symbol}!\n\n${message}\n\nTriggered at: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST\n\nInvestIQ — Your Financial Intelligence Hub\n\n---\nTo ensure delivery of future alerts, please add this email address to your contacts.\nYou are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to unsubscribe, you can delete your alert or account via the Support tab.`,
         html: emailHtml,
       });
 

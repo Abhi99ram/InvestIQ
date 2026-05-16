@@ -56,18 +56,18 @@ export async function PUT(request) {
       });
 
       let changesText = [];
-      if (updatedUser.name !== targetUser.name) changesText.push(\`Name: \${targetUser.name} -> \${updatedUser.name}\`);
-      if (updatedUser.email !== targetUser.email) changesText.push(\`Email: \${targetUser.email} -> \${updatedUser.email}\`);
-      if (updatedUser.mobile !== targetUser.mobile) changesText.push(\`Mobile: \${targetUser.mobile} -> \${updatedUser.mobile}\`);
+      if (updatedUser.name !== targetUser.name) changesText.push(`Name: ${targetUser.name} -> ${updatedUser.name}`);
+      if (updatedUser.email !== targetUser.email) changesText.push(`Email: ${targetUser.email} -> ${updatedUser.email}`);
+      if (updatedUser.mobile !== targetUser.mobile) changesText.push(`Mobile: ${targetUser.mobile} -> ${updatedUser.mobile}`);
 
       if (changesText.length > 0) {
         try {
           await transporter.sendMail({
             from: '"InvestIQ System" <' + gmailUser + '>',
             to: 'investiq.helpdesk@gmail.com',
-            subject: \`User Profile Updated: \${targetUser.email}\`,
-            text: \`A user has updated their profile details:\n\nUser ID: \${updatedUser.id}\nOriginal Email: \${targetUser.email}\n\nChanges Made:\n\${changesText.join('\\n')}\`,
-            html: \`<p>A user has updated their profile details:</p><ul><li>Original Email: \${targetUser.email}</li></ul><p><strong>Changes Made:</strong></p><ul>\${changesText.map(c => \`<li>\${c}</li>\`).join('')}</ul>\`
+            subject: `User Profile Updated: ${targetUser.email}`,
+            text: `A user has updated their profile details:\n\nUser ID: ${updatedUser.id}\nOriginal Email: ${targetUser.email}\n\nChanges Made:\n${changesText.join('\n')}`,
+            html: `<p>A user has updated their profile details:</p><ul><li>Original Email: ${targetUser.email}</li></ul><p><strong>Changes Made:</strong></p><ul>${changesText.map(c => `<li>${c}</li>`).join('')}</ul>`
           });
         } catch (e) { console.error('Failed to notify admin of update', e); }
       }

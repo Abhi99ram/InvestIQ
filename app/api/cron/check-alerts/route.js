@@ -48,8 +48,8 @@ async function sendAlertEmail(email, name, symbol, targetPrice, currentPrice, di
     await transporter.sendMail({
       from: '"InvestIQ Alerts" <' + gmailUser + '>',
       to: email,
-      subject: \`Alert: \${symbol} is now ₹\${currentPrice.toFixed(2)}\`,
-      text: \`InvestIQ Price Alert Triggered\n\nHi \${name || 'Investor'},\n\nYour price alert for \${symbol} has just been triggered!\nCondition: Price goes \${direction} ₹\${targetPrice}\nCurrent Price: ₹\${currentPrice.toFixed(2)}\n\nLog in to InvestIQ to view your portfolio and take action.\n\n---\nTo ensure delivery of future alerts, please add this email address to your contacts.\nYou are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to unsubscribe, you can delete your alert or account via the Support tab.\`,
+      subject: `Alert: ${symbol} is now ₹${currentPrice.toFixed(2)}`,
+      text: `InvestIQ Price Alert Triggered\n\nHi ${name || 'Investor'},\n\nYour price alert for ${symbol} has just been triggered!\nCondition: Price goes ${direction} ₹${targetPrice}\nCurrent Price: ₹${currentPrice.toFixed(2)}\n\nLog in to InvestIQ to view your portfolio and take action.\n\n---\nTo ensure delivery of future alerts, please add this email address to your contacts.\nYou are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to unsubscribe, you can delete your alert or account via the Support tab.`,
       html: emailHtml,
     });
     return true;

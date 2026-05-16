@@ -40,8 +40,8 @@ export async function DELETE(request) {
           from: '"InvestIQ Support" <' + gmailUser + '>',
           to: targetUser.email,
           subject: 'Account Deleted - InvestIQ',
-          text: \`Hi \${targetUser.name || 'User'},\n\nYour account has been successfully deleted.\nAll your personal data, watchlists, and alerts have been purged from our systems.\n\nThank you for trying InvestIQ.\n\nInvestIQ Team\`,
-          html: \`<p>Hi \${targetUser.name || 'User'},</p><p>Your account has been successfully deleted. All your personal data, watchlists, and alerts have been purged from our systems.</p><p>Thank you for trying InvestIQ.</p>\`
+          text: `Hi ${targetUser.name || 'User'},\n\nYour account has been successfully deleted.\nAll your personal data, watchlists, and alerts have been purged from our systems.\n\nThank you for trying InvestIQ.\n\nInvestIQ Team`,
+          html: `<p>Hi ${targetUser.name || 'User'},</p><p>Your account has been successfully deleted. All your personal data, watchlists, and alerts have been purged from our systems.</p><p>Thank you for trying InvestIQ.</p>`
         });
       } catch (e) { console.error('Failed to notify user of deletion', e); }
 
@@ -50,9 +50,9 @@ export async function DELETE(request) {
         await transporter.sendMail({
           from: '"InvestIQ System" <' + gmailUser + '>',
           to: 'investiq.helpdesk@gmail.com',
-          subject: \`User Deleted Account: \${targetUser.email}\`,
-          text: \`A user has deleted their account:\n\nName: \${targetUser.name}\nEmail: \${targetUser.email}\nMobile: \${targetUser.mobile}\nJoined: \${targetUser.createdAt}\`,
-          html: \`<p>A user has deleted their account:</p><ul><li>Name: \${targetUser.name}</li><li>Email: \${targetUser.email}</li><li>Mobile: \${targetUser.mobile}</li></ul>\`
+          subject: `User Deleted Account: ${targetUser.email}`,
+          text: `A user has deleted their account:\n\nName: ${targetUser.name}\nEmail: ${targetUser.email}\nMobile: ${targetUser.mobile}\nJoined: ${targetUser.createdAt}`,
+          html: `<p>A user has deleted their account:</p><ul><li>Name: ${targetUser.name}</li><li>Email: ${targetUser.email}</li><li>Mobile: ${targetUser.mobile}</li></ul>`
         });
       } catch (e) { console.error('Failed to notify admin of deletion', e); }
     }
