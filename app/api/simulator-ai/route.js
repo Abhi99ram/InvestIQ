@@ -50,9 +50,9 @@ export async function POST(request) {
     const USDINR = macro['USDINR=X'] || 83.5;
     const IN10Y = macro['^INBMK'] || 7.1;
 
-    // Use Indian 10Y if all assets are Indian, otherwise US 10Y
-    const isAllIndian = portfolio.every(p => p.symbol.endsWith('.NS') || p.symbol.endsWith('.BO') || p.symbol === '^NSEI');
-    const riskFreeRateAnnual = (isAllIndian ? IN10Y : US10Y) / 100;
+    // Since the portfolio is denominated in INR (₹), the investor's opportunity cost 
+    // is always the Indian Risk-Free Rate, even if they hold US equities.
+    const riskFreeRateAnnual = (IN10Y || 7.1) / 100;
     const equityRiskPremium = 0.055; 
 
     let T_years = periodValue || 1;
