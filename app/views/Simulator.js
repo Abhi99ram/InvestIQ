@@ -179,7 +179,7 @@ export default function Simulator() {
               <h3 style={{ color: '#fff', marginBottom: '10px' }}>Institutional Engine Processing...</h3>
               <div style={{ color: '#38bdf8', fontSize: '0.95rem', minHeight: '20px' }}>{LOADING_STEPS[loadingStepIdx]}</div>
               <div style={{ width: '100%', maxWidth: '400px', background: '#1e293b', height: '8px', borderRadius: '4px', marginTop: '30px', overflow: 'hidden' }}>
-                <div style={{ width: \`\${(loadingStepIdx / (LOADING_STEPS.length - 1)) * 100}%\`, background: 'linear-gradient(90deg, #38bdf8, #8b5cf6)', height: '100%', transition: 'width 0.5s ease' }}></div>
+                <div style={{ width: `${(loadingStepIdx / (LOADING_STEPS.length - 1)) * 100}%`, background: 'linear-gradient(90deg, #38bdf8, #8b5cf6)', height: '100%', transition: 'width 0.5s ease' }}></div>
               </div>
             </div>
           )}
@@ -197,10 +197,10 @@ export default function Simulator() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-                  <MetricCard title="Real CAGR" value={\`\${(m.realCAGR * 100).toFixed(2)}%\`} highlight={m.realCAGR > 0} sub="CAPM Derived" />
+                  <MetricCard title="Real CAGR" value={`${(m.realCAGR * 100).toFixed(2)}%`} highlight={m.realCAGR > 0} sub="CAPM Derived" />
                   <MetricCard title="Sharpe Ratio" value={m.sharpeRatio.toFixed(2)} highlight={m.sharpeRatio > 1} sub="Risk-adjusted Return" />
                   <MetricCard title="Sortino Ratio" value={m.sortino.toFixed(2)} highlight={m.sortino > 1.5} sub="Downside Protection" />
-                  <MetricCard title="Vol (σ_annual)" value={\`\${(m.portVolAnnual * 100).toFixed(1)}%\`} highlight={false} sub="Portfolio Volatility" />
+                  <MetricCard title="Vol (σ_annual)" value={`${(m.portVolAnnual * 100).toFixed(1)}%`} highlight={false} sub="Portfolio Volatility" />
                 </div>
               </div>
 
@@ -302,10 +302,10 @@ export default function Simulator() {
           )}
         </div>
       </div>
-      <style dangerouslySetInnerHTML={{__html: \`
+      <style dangerouslySetInnerHTML={{__html: `
         @keyframes spin { 100% { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      \`}} />
+      `}} />
     </div>
   );
 }
@@ -342,13 +342,13 @@ function DistributionChart({ points, p5, p50, p90 }) {
   const height = 180;
   const width = 1000; // viewBox width
 
-  let pathD = \`M 0 \${height}\`;
+  let pathD = `M 0 ${height}`;
   histogram.forEach((count, i) => {
     const x = (i / bins) * width;
     const y = height - ((count / maxCount) * height * 0.9);
-    pathD += \` L \${x} \${y}\`;
+    pathD += ` L ${x} ${y}`;
   });
-  pathD += \` L \${width} \${height} Z\`;
+  pathD += ` L ${width} ${height} Z`;
 
   const getX = (val) => ((val - min) / range) * width;
   const x5 = getX(p5);
@@ -356,7 +356,7 @@ function DistributionChart({ points, p5, p50, p90 }) {
   const x90 = getX(p90);
 
   return (
-    <svg viewBox={\`0 0 \${width} \${height}\`} style={{ width: '100%', height: '100%', preserveAspectRatio: 'none' }}>
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%', preserveAspectRatio: 'none' }}>
       <defs>
         <linearGradient id="distGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.4" />
