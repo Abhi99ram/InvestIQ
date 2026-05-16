@@ -70,6 +70,7 @@ export default function Admin() {
             <thead>
               <tr>
                 <th>ID / Created</th>
+                <th>Name</th>
                 <th>Email</th>
                 <th>Mobile</th>
                 <th>Actions</th>
@@ -81,6 +82,7 @@ export default function Admin() {
                   <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     {u.id}<br/>{new Date(u.createdAt).toLocaleDateString()}
                   </td>
+                  <td><strong>{u.name || '-'}</strong></td>
                   <td><strong>{u.email}</strong></td>
                   <td>{u.mobile || '-'}</td>
                   <td>
