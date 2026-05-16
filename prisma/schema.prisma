@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Stock {
+  id               String            @id @default(uuid())
+  ticker           String            @unique
+  companyName      String
+  sector           String
+  financials       Financials[]
+  corporateActions CorporateAction[]
+}
+
+model Financials {
+  id              String  @id @default(uuid())
+  stockId         String
+  year            Int
+  quarter         Int?
+  balanceSheet    Json
+  incomeStatement Json
+  cashFlow        Json
+  stock           Stock   @relation(fields: [stockId], references: [id])
+}
+
+model UserPortfolio {
+  id           String @id @default(uuid())
+  userId       String
+  holdings     Json
+  customRatios Json
+  watchlists   Json
+}
+
+model CorporateAction {
+  id      String   @id @default(uuid())
+  stockId String
+  type    String
+  exDate  DateTime
+  details String
+  stock   Stock    @relation(fields: [stockId], references: [id])
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String?
+  email     String    @unique
+  mobile    String    @unique
+  password  String
+  otp       String?
+  otpExpiry DateTime?
+  alerts    Json?     // Stores user price alerts
+  createdAt DateTime  @default(now())
+}
