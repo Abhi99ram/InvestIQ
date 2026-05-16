@@ -10,7 +10,6 @@ import Admin from './views/Admin';
 import MyAccount from './views/MyAccount';
 import Support from './views/Support';
 import Simulator from './views/Simulator';
-import Learn from './views/Learn';
 import Auth from './views/Auth';
 
 const NAV_ITEMS = [
@@ -20,8 +19,7 @@ const NAV_ITEMS = [
   { id: 'watchlist', label: 'Watchlist & Alerts', icon: '⭐' },
   { id: 'analysis', label: 'Analysis', icon: '📈' },
   { id: 'news', label: 'News & Updates', icon: '📰' },
-  { id: 'simulator', label: 'Simulator', icon: '🧮' },
-  { id: 'learn', label: 'Learn', icon: '📚' },
+  { id: 'simulator', label: 'Simulator & Risk', icon: '🧮' },
   { id: 'account', label: 'My Account', icon: '👤' },
   { id: 'support', label: 'Support', icon: '🎧' },
 ];
@@ -42,6 +40,21 @@ export default function Home() {
     const savedUser = localStorage.getItem('investiq_user');
     if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
+
+  // Poll for notifications
+  useEffect(() => {
+    if (!user) return;
+    const fetchNotifs = async () => {
+      try {
+        const res = await fetch(`/api/user/notifications?email=${encodeURIComponent(user.email)}`);
+        const data = await res.json();
+        if (data.count !== undefined) setNotifCount(data.count);
+      } catch (e) { console.error(e); }
+    };
+    fetchNotifs();
+    const int = setInterval(fetchNotifs, 30000);
+    return () => clearInterval(int);
+  }, [user]);
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -90,7 +103,6 @@ export default function Home() {
       case 'analysis': return <Analysis selectedSymbol={selectedSymbol} onSelectStock={selectStock} />;
       case 'news': return <NewsFeed />;
       case 'simulator': return <Simulator />;
-      case 'learn': return <Learn />;
       case 'account': return <MyAccount user={user} onUpdateUser={handleUpdateUser} onLogout={handleLogout} />;
       case 'support': return <Support />;
       default: return <Dashboard onSelectStock={selectStock} onSelectSector={viewSector} />;
@@ -102,7 +114,7 @@ export default function Home() {
       <div className="app-layout" style={{ justifyContent: 'center', alignItems: 'center' }}>
         <div style={{ padding: '20px', width: '100%' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <div className="logo-icon" style={{ fontSize: '3rem' }}>📊</div>
+            <img src="/logo.png" alt="InvestIQ Logo" style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 8px 32px rgba(56,189,248,0.3)' }} />
             <h1 style={{ fontSize: '2.5rem', color: 'var(--text-primary)' }}>InvestIQ AI</h1>
             <p style={{ color: 'var(--text-muted)' }}>Financial Intelligence Dashboard</p>
           </div>
@@ -118,7 +130,7 @@ export default function Home() {
         <div className="main-content" style={{ marginLeft: 0 }}>
           <header className="header" style={{ justifyContent: 'space-between' }}>
             <div className="sidebar-logo">
-              <div className="logo-icon">📊</div>
+              <img src="/logo.png" alt="InvestIQ Admin" style={{ width: '32px', height: '32px', objectFit: 'contain', borderRadius: '8px' }} />
               <h1 style={{ margin: 0 }}>InvestIQ AI Admin</h1>
             </div>
             <button onClick={handleLogout} className="btn-secondary btn-sm">Logout</button>
@@ -136,7 +148,7 @@ export default function Home() {
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="logo-icon">📊</div>
+          <img src="/logo.png" alt="InvestIQ Logo" style={{ width: '36px', height: '36px', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }} />
           <h1>InvestIQ AI</h1>
         </div>
         <nav className="sidebar-nav">
@@ -183,7 +195,17 @@ export default function Home() {
             <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{user.name || user.email}</span>
             <div className="market-badge"><span className="dot"></span>LIVE</div>
           </div>
-          <button className="notification-btn" onClick={() => setActivePage('watchlist')}>
+          <button className="notification-btn" onClick={async () => {
+            setActivePage('watchlist');
+            if (notifCount > 0) {
+              setNotifCount(0);
+              fetch('/api/user/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: user.email })
+              }).catch(console.error);
+            }
+          }}>
             🔔 {notifCount > 0 && <span className="notification-badge">{notifCount}</span>}
           </button>
           <button onClick={handleLogout} className="btn-secondary btn-sm" style={{ marginLeft: '10px' }}>

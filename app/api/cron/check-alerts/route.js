@@ -131,6 +131,8 @@ export async function GET(request) {
             const alertIndex = allAlerts.findIndex(a => a.id === alert.id);
             if (alertIndex > -1) {
               allAlerts[alertIndex].active = false;
+              allAlerts[alertIndex].triggered = true;
+              allAlerts[alertIndex].triggeredTime = Date.now();
               userUpdated = true;
             }
           }

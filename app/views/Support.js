@@ -25,7 +25,7 @@ export default function Support() {
           <div style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '20px', borderRadius: '12px', flex: 1, minWidth: '250px' }}>
             <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--text-muted)' }}>Talk to an Expert on WhatsApp:</p>
             <a 
-              href="https://api.whatsapp.com/send?phone=5516997447223&text=Hi,+I+need+help+with+InvestIQ+AI" 
+              href="https://api.whatsapp.com/send?phone=919059204355&text=Hi,+I+need+help+with+InvestIQ+AI" 
               target="_blank" rel="noreferrer"
               style={{ fontSize: '20px', fontWeight: 'bold', color: '#22c55e', textDecoration: 'none' }}
             >
