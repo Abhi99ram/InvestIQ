@@ -12,16 +12,18 @@ import Support from './views/Support';
 import Simulator from './views/Simulator';
 import Auth from './views/Auth';
 
+import { LayoutDashboard, Factory, Building2, Star, LineChart, Newspaper, Calculator, UserIcon, Headphones } from 'lucide-react';
+
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'sectors', label: 'Sectors', icon: '🏭' },
-  { id: 'companies', label: 'Companies', icon: '🏢' },
-  { id: 'watchlist', label: 'Watchlist & Alerts', icon: '⭐' },
-  { id: 'analysis', label: 'Analysis', icon: '📈' },
-  { id: 'news', label: 'News & Updates', icon: '📰' },
-  { id: 'simulator', label: 'Simulator & Risk', icon: '🧮' },
-  { id: 'account', label: 'My Account', icon: '👤' },
-  { id: 'support', label: 'Support', icon: '🎧' },
+  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+  { id: 'sectors', label: 'Sectors', icon: <Factory size={20} /> },
+  { id: 'companies', label: 'Companies', icon: <Building2 size={20} /> },
+  { id: 'watchlist', label: 'Watchlist & Alerts', icon: <Star size={20} /> },
+  { id: 'analysis', label: 'Analysis', icon: <LineChart size={20} /> },
+  { id: 'news', label: 'News & Updates', icon: <Newspaper size={20} /> },
+  { id: 'simulator', label: 'Simulator & Risk', icon: <Calculator size={20} /> },
+  { id: 'account', label: 'My Account', icon: <UserIcon size={20} /> },
+  { id: 'support', label: 'Support', icon: <Headphones size={20} /> },
 ];
 
 export default function Home() {
