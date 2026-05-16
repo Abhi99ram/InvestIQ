@@ -460,10 +460,19 @@ export async function POST(request) {
     const hasDividends = assetData.some(a => a.divYieldAnnual > 0);
     const hasAdvancedModeling = true;
 
+    // UPGRADE 5: Real-World Tax Drag Modeling (LTCG in India)
+    let capitalGains = p50 - totalInvested;
+    let estimatedTax = 0;
+    if (capitalGains > 125000) {
+      estimatedTax = (capitalGains - 125000) * 0.125; // 12.5% LTCG over 1.25L
+    }
+    const netOfTaxValue = p50 - estimatedTax;
+
     const metricsPayload = {
       assets: assetData.map(a => ({ symbol: a.symbol, weight: a.weight, beta: a.beta, pe: a.pe, isLimitedData: a.isLimitedData, liquidityPenalty: a.liquidityPenalty, sector: a.sector, geo: a.geo, divYieldAnnual: a.divYieldAnnual, sizePremium: a.sizePremium, valuePremium: a.valuePremium, fxDriftAnnual: a.fxDriftAnnual })),
       portVolAnnual, VaR_95, CVaR_95, riskScore, riskLevel, projectedCAGR, realCAGR, estimatedValueReal,
       p5, p10, p50, p90, sharpeRatio, sortino, HHI, stressTests, distributionPoints, trajectoryPath, optimalWeights, hasDividends, hasAdvancedModeling,
+      netOfTaxValue, estimatedTax, corMat,
       macro: { VIX, US10Y, USDINR, riskFreeRateAnnual }
     };
 

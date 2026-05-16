@@ -74,6 +74,42 @@ export default function Simulator() {
 
   const currentPortfolioValue = useMemo(() => portfolio.reduce((acc, p) => acc + (p.price * p.shares), 0), [portfolio]);
 
+  const handleSharesChange = (symbol, sharesStr) => {
+    const s = Number(sharesStr);
+    if (s < 0) return;
+    setPortfolio(portfolio.map(p => p.symbol === symbol ? {...p, shares: s} : p));
+    setResults(null);
+  };
+
+  const handleSliderChange = (symbol, newPercentage) => {
+    if (portfolio.length <= 1) return;
+    
+    const targetFraction = newPercentage / 100;
+    const currentTotalVal = currentPortfolioValue || 1;
+    const targetValForSymbol = targetFraction * currentTotalVal;
+    const remainingValForOthers = currentTotalVal - targetValForSymbol;
+    
+    const others = portfolio.filter(p => p.symbol !== symbol);
+    const currentOthersVal = others.reduce((acc, p) => acc + (p.price * p.shares), 0);
+    
+    const newPortfolio = portfolio.map(p => {
+      if (p.symbol === symbol) {
+        let newShares = Math.max(1, Math.round(targetValForSymbol / p.price));
+        return { ...p, shares: newShares };
+      } else {
+        if (currentOthersVal === 0) return p;
+        let theirCurrentVal = p.price * p.shares;
+        let theirFractionOfOthers = theirCurrentVal / currentOthersVal;
+        let theirNewVal = theirFractionOfOthers * remainingValForOthers;
+        let newShares = Math.max(1, Math.round(theirNewVal / p.price));
+        return { ...p, shares: newShares };
+      }
+    });
+    
+    setPortfolio(newPortfolio);
+    setResults(null);
+  };
+
   const runAnalysis = async () => {
     if (portfolio.length === 0) return;
     setIsAnalyzing(true);
@@ -116,7 +152,6 @@ export default function Simulator() {
     const newPortfolio = portfolio.map(p => {
       const optData = opt.find(x => x.symbol === p.symbol);
       if (optData) {
-        // Calculate new shares based on optimal weight of current portfolio value
         let targetVal = optData.weight * currentPortfolioValue;
         let newShares = Math.max(1, Math.round(targetVal / p.price));
         return { ...p, shares: newShares };
@@ -161,7 +196,7 @@ export default function Simulator() {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '30px', alignItems: 'start' }} className="layout-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: '450px 1fr', gap: '30px', alignItems: 'start' }} className="layout-grid">
         
         {/* LEFT COLUMN: SETUP */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }} className="hide-on-print">
@@ -202,32 +237,41 @@ export default function Simulator() {
             </div>
 
             {portfolio.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 {portfolio.map(p => {
                   let icon = '🏢';
                   if (p.symbol.includes('=F')) icon = '🏆';
                   if (p.symbol.startsWith('^')) icon = '📈';
                   if (p.symbol.includes('-USD')) icon = '🪙';
                   
+                  const pVal = p.price * p.shares;
+                  const pPct = currentPortfolioValue > 0 ? (pVal / currentPortfolioValue) * 100 : 0;
+                  
                   return (
-                    <div key={p.symbol} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(2,6,23,0.4)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(51,65,85,0.5)', transition: 'transform 0.2s ease, border-color 0.2s ease' }} className="asset-card">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ background: 'rgba(51,65,85,0.4)', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>{icon}</div>
-                        <div>
-                          <div style={{ fontSize: '0.9rem', color: '#f8fafc', fontWeight: 'bold' }}>{p.symbol}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>₹{(p.price * p.shares).toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+                    <div key={p.symbol} style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(2,6,23,0.4)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(51,65,85,0.5)', transition: 'border-color 0.2s ease' }} className="asset-card">
+                      
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ background: 'rgba(51,65,85,0.4)', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>{icon}</div>
+                          <div>
+                            <div style={{ fontSize: '0.9rem', color: '#f8fafc', fontWeight: 'bold' }}>{p.symbol}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Val: ₹{pVal.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <span style={{ fontSize: '0.65rem', color: '#64748b', marginBottom: '2px' }}>Shares</span>
+                            <input type="number" min="1" value={p.shares} onChange={(e) => handleSharesChange(p.symbol, e.target.value)} style={{ width: '70px', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(56,189,248,0.3)', color: '#38bdf8', borderRadius: '6px', padding: '6px', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold', outline: 'none' }} />
+                          </div>
+                          <button onClick={() => {setPortfolio(portfolio.filter(x => x.symbol !== p.symbol)); setResults(null);}} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', borderRadius: '6px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem', transition: 'background 0.2s' }} className="delete-btn">×</button>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                          <span style={{ fontSize: '0.65rem', color: '#64748b', marginBottom: '2px' }}>Units/Shares</span>
-                          <input type="number" min="1" value={p.shares} onChange={(e) => {
-                            setPortfolio(portfolio.map(x => x.symbol === p.symbol ? {...x, shares: Number(e.target.value)} : x));
-                            setResults(null);
-                          }} style={{ width: '60px', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(56,189,248,0.3)', color: '#38bdf8', borderRadius: '6px', padding: '6px', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold', outline: 'none' }} />
-                        </div>
-                        <button onClick={() => {setPortfolio(portfolio.filter(x => x.symbol !== p.symbol)); setResults(null);}} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', borderRadius: '6px', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem', transition: 'background 0.2s' }} className="delete-btn">×</button>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '5px' }}>
+                        <input type="range" min="0" max="100" step="0.1" value={pPct} onChange={(e) => handleSliderChange(p.symbol, Number(e.target.value))} style={{ flex: 1, accentColor: '#38bdf8', cursor: 'pointer' }} />
+                        <span style={{ fontSize: '0.85rem', color: '#e2e8f0', width: '45px', textAlign: 'right' }}>{pPct.toFixed(1)}%</span>
                       </div>
+                      
                     </div>
                   );
                 })}
@@ -242,7 +286,7 @@ export default function Simulator() {
             {results && results.metrics.optimalWeights && (
               <button onClick={applyOptimalWeights} style={{ width: '100%', marginTop: '15px', padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }} className="optimize-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                Apply Optimal Weights (Max Sharpe)
+                Apply AI Optimized Weights
               </button>
             )}
           </div>
@@ -293,7 +337,7 @@ export default function Simulator() {
         </div>
 
         {/* RIGHT COLUMN: RESULTS */}
-        <div className="print-full-width">
+        <div className="print-full-width" style={{ minWidth: 0 }}>
           {isAnalyzing && !results && (
             <div style={{ background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(20px)', padding: '50px 40px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '600px', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)' }}>
               <div style={{ position: 'relative', width: '80px', height: '80px', marginBottom: '30px' }}>
@@ -318,9 +362,10 @@ export default function Simulator() {
                 <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                   <div style={{ fontSize: '0.85rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '10px' }}>Expected Median Value (p50)</div>
                   <div style={{ fontSize: '5rem', fontWeight: '900', color: '#fff', textShadow: '0 10px 30px rgba(56, 189, 248, 0.3)', lineHeight: '1' }}>
-                    ₹{m.estimatedValueReal.toLocaleString('en-IN', {maximumFractionDigits:0})}
+                    ₹{m.netOfTaxValue ? m.netOfTaxValue.toLocaleString('en-IN', {maximumFractionDigits:0}) : m.estimatedValueReal.toLocaleString('en-IN', {maximumFractionDigits:0})}
                   </div>
-                  {includeInflation && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '10px' }}>*Purchasing power adjusted for {inflationRate}% inflation</div>}
+                  {m.estimatedTax > 0 && <div style={{ fontSize: '0.85rem', color: '#ef4444', marginTop: '10px' }}>Net of ₹{m.estimatedTax.toLocaleString('en-IN', {maximumFractionDigits:0})} LTCG Tax</div>}
+                  {includeInflation && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '5px' }}>*Purchasing power adjusted for {inflationRate}% inflation</div>}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
@@ -345,6 +390,14 @@ export default function Simulator() {
                   </div>
                 </div>
               </div>
+
+              {/* INTERACTIVE CORRELATION MATRIX */}
+              {m.corMat && (
+                <div style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }} className="print-border-visible">
+                  <h4 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '1.1rem' }}>Asset Correlation Matrix (Tail Dependence)</h4>
+                  <CorrelationGrid corMat={m.corMat} assets={m.assets} />
+                </div>
+              )}
 
               {/* INTERACTIVE TRAJECTORY PATH */}
               {m.trajectoryPath && m.trajectoryPath.length > 0 && (
@@ -439,12 +492,38 @@ export default function Simulator() {
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .search-result-row:hover { background: rgba(56, 189, 248, 0.1) !important; }
         .quick-add-btn:hover { background: rgba(56, 189, 248, 0.1) !important; border-color: rgba(56, 189, 248, 0.4) !important; color: #38bdf8 !important; }
-        .asset-card:hover { transform: translateY(-2px); border-color: rgba(56, 189, 248, 0.4) !important; }
+        .asset-card:hover { border-color: rgba(56, 189, 248, 0.4) !important; }
         .delete-btn:hover { background: rgba(239, 68, 68, 0.2) !important; }
         .run-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 15px 25px -5px rgba(139, 92, 246, 0.5) !important; }
         .run-btn:active:not(:disabled) { transform: translateY(1px); }
         .optimize-btn:hover { background: rgba(16, 185, 129, 0.2) !important; transform: translateY(-1px); }
         
+        input[type=range] {
+          -webkit-appearance: none;
+          width: 100%;
+          background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background: #38bdf8;
+          cursor: pointer;
+          margin-top: -6px;
+          box-shadow: 0 0 10px rgba(56,189,248,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+          width: 100%;
+          height: 4px;
+          cursor: pointer;
+          background: rgba(51,65,85,0.8);
+          border-radius: 2px;
+        }
+        input[type=range]:focus {
+          outline: none;
+        }
+
         @media print {
           body { background: #0f172a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .hide-on-print { display: none !important; }
@@ -500,6 +579,47 @@ function HeatmapBar({ data, groupKey, colors }) {
   );
 }
 
+function CorrelationGrid({ corMat, assets }) {
+  if (!corMat || !assets || assets.length === 0) return null;
+  const N = assets.length;
+  
+  const getColor = (r) => {
+    if (r >= 0) return \`rgba(34, 197, 94, \${Math.max(0.1, r * 0.8)})\`;
+    return \`rgba(239, 68, 68, \${Math.max(0.1, Math.abs(r) * 0.8)})\`;
+  };
+
+  return (
+    <div style={{ overflowX: 'auto', paddingBottom: '10px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: \`100px repeat(\${N}, 1fr)\`, gap: '4px', minWidth: \`\${N * 60 + 100}px\` }}>
+        {/* Header Row */}
+        <div></div>
+        {assets.map((a, i) => (
+          <div key={\`h-\${i}\`} style={{ fontSize: '0.7rem', color: '#94a3b8', textAlign: 'center', transform: 'rotate(-45deg)', transformOrigin: 'bottom center', height: '40px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+            {a.symbol.split('.')[0]}
+          </div>
+        ))}
+        
+        {/* Matrix Rows */}
+        {corMat.map((row, i) => (
+          <div key={\`r-\${i}\`} style={{ display: 'contents' }}>
+            <div style={{ fontSize: '0.75rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '10px' }}>
+              {assets[i].symbol.split('.')[0]}
+            </div>
+            {row.map((val, j) => {
+              const isSelf = i === j;
+              return (
+                <div key={\`c-\${i}-\${j}\`} style={{ background: isSelf ? 'rgba(51,65,85,0.5)' : getColor(val), color: isSelf ? '#64748b' : '#fff', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '45px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }} title={\`\${assets[i].symbol} vs \${assets[j].symbol}: \${val.toFixed(2)}\`}>
+                  {isSelf ? '-' : val.toFixed(2)}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TrajectoryChart({ pathData, startValue }) {
   if (!pathData || pathData.length === 0) return null;
   
@@ -516,7 +636,6 @@ function TrajectoryChart({ pathData, startValue }) {
     if(d.p90 > maxVal) maxVal = d.p90;
   });
   
-  // Pad the Y axis a bit
   const range = maxVal - minVal || 1;
   minVal = Math.max(0, minVal - range * 0.1);
   maxVal = maxVal + range * 0.1;
@@ -537,18 +656,13 @@ function TrajectoryChart({ pathData, startValue }) {
 
   return (
     <svg viewBox={\`0 0 \${width} \${height}\`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-      {/* Grid lines */}
       <line x1="0" y1={getY(startValue)} x2={width} y2={getY(startValue)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4,4" />
-      
-      {/* Area fill between p5 and p90 */}
       <path d={\`\${d90} \${pathData.slice().reverse().map(d => \`L \${getX(d.year)} \${getY(d.p5)}\`).join(' ')} Z\`} fill="rgba(56, 189, 248, 0.05)" />
       
-      {/* Lines */}
       <path d={d5} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" vectorEffect="non-scaling-stroke" />
       <path d={d50} fill="none" stroke="#38bdf8" strokeWidth="3" vectorEffect="non-scaling-stroke" />
       <path d={d90} fill="none" stroke="#22c55e" strokeWidth="2" strokeDasharray="6,4" vectorEffect="non-scaling-stroke" />
       
-      {/* End point dots */}
       <circle cx={width} cy={getY(pathData[pathData.length-1].p90)} r="4" fill="#22c55e" />
       <circle cx={width} cy={getY(pathData[pathData.length-1].p50)} r="5" fill="#38bdf8" />
       <circle cx={width} cy={getY(pathData[pathData.length-1].p5)} r="4" fill="#ef4444" />
