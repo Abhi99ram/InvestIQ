@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 import * as math from 'mathjs';
+import { jStat } from 'jstat';
 
 // Cache for Yahoo data
 const cache = new Map();
@@ -51,7 +52,9 @@ export async function POST(request) {
     const USDINR = macro['USDINR=X'] || 83.5;
     const IN10Y = macro['^INBMK'] || 7.1;
 
-    const riskFreeRate = IN10Y / 100;
+    const riskFreeRateAnnual = US10Y / 100;
+    const riskFreeRateMonthly = Math.pow(1 + riskFreeRateAnnual, 1/12) - 1;
+    const equityRiskPremium = 0.055; // 5.5% ERP
 
     // Convert period to years
     let T_years = periodValue || 1;
@@ -112,7 +115,6 @@ export async function POST(request) {
         if (quote && hist.length > 0) setCache(cacheKey, data);
       }
 
-      // Prepare local metrics
       const q = data.quote || {};
       const histPrices = data.hist.map(h => h.close).filter(Boolean);
       const rets = getReturns(histPrices);
@@ -120,11 +122,13 @@ export async function POST(request) {
       const price = q.regularMarketPrice || p.price;
       const weight = (p.shares * price) / totalInvested;
       
-      let meanRet = 0, stdDev = 0;
+      let stdDevMonthly = 0;
       if (rets.length > 0) {
-        meanRet = math.mean(rets);
-        stdDev = math.std(rets);
+        stdDevMonthly = math.std(rets);
+      } else {
+        stdDevMonthly = 0.20 / Math.sqrt(12); // Fallback volatility
       }
+      const stdDevAnnual = stdDevMonthly * Math.sqrt(12);
       
       const isIndian = p.symbol.endsWith('.NS') || p.symbol.endsWith('.BO') || p.symbol === '^NSEI';
       const benchRets = isIndian ? niftyReturns : spxReturns;
@@ -141,80 +145,32 @@ export async function POST(request) {
         }
       }
 
-      // Kelly
-      let posMonths = rets.filter(r => r > 0).length;
-      let probGain = rets.length > 0 ? posMonths / rets.length : 0.5;
-      let avgGain = math.mean(rets.filter(r => r > 0)) || 0.01;
-      let avgLoss = Math.abs(math.mean(rets.filter(r => r < 0))) || 0.01;
-      let bRatio = avgGain / avgLoss;
-      let kelly = (probGain * bRatio - (1 - probGain)) / bRatio;
+      // CAPM Expected Return (Annualized -> Monthly)
+      const expectedReturnAnnual = riskFreeRateAnnual + beta * equityRiskPremium;
+      const expectedReturnMonthly = Math.pow(1 + expectedReturnAnnual, 1/12) - 1;
 
-      // Max Drawdown
-      let maxDD = 0;
-      let peak = 0;
-      for(let val of histPrices) {
-        if (val > peak) peak = val;
-        let dd = (peak - val) / peak;
-        if (dd > maxDD) maxDD = dd;
+      // Friction / Liquidity Risk Penalty
+      let liquidityPenalty = 0;
+      if (q.averageVolume && q.marketCap) {
+        const dailyTradedValue = q.averageVolume * price;
+        const turnoverRatio = dailyTradedValue / q.marketCap;
+        if (turnoverRatio < 0.001) liquidityPenalty = 0.02; // Illiquid penalty
       }
-
-      // Momentum (1, 3, 6 month)
-      let momScore = 0;
-      if (histPrices.length >= 7) {
-        const cur = histPrices[histPrices.length - 1];
-        const r1 = (cur - histPrices[histPrices.length - 2]) / histPrices[histPrices.length - 2];
-        const r3 = (cur - histPrices[histPrices.length - 4]) / histPrices[histPrices.length - 4];
-        const r6 = (cur - histPrices[histPrices.length - 7]) / histPrices[histPrices.length - 7];
-        momScore = 0.5*r1 + 0.3*r3 + 0.2*r6;
-      }
-
-      // Fama French (simple)
-      let sizePremium = 0, valuePremium = 0;
-      const mcap = q.marketCap || 0;
-      if (isIndian) {
-        const mcapCr = mcap / 10000000;
-        if (mcapCr < 5000 && mcapCr > 0) sizePremium = 0.02;
-        else if (mcapCr < 20000 && mcapCr > 0) sizePremium = 0.01;
-      }
-      const pe = q.trailingPE || 20;
-      if (pe < 15) valuePremium = 0.015;
-      else if (pe > 30) valuePremium = -0.005;
-      
-      const cagr = histPrices.length > 0 ? Math.pow(histPrices[histPrices.length - 1] / histPrices[0], 1/(histPrices.length/12)) - 1 : 0.08;
-
-      // Sector medians map (simplified)
-      const sectorMedians = { 'Technology': 25, 'Financial Services': 15, 'Healthcare': 22, 'Consumer Defensive': 20 };
-      const secMed = sectorMedians[q.sector] || 20;
-      let valSignal = 'fair';
-      if (pe > secMed * 1.5) valSignal = 'overvalued';
-      if (pe < secMed * 0.7 && pe > 0) valSignal = 'undervalued';
-
-      const high52 = q.fiftyTwoWeekHigh || price * 1.2;
-      const low52 = q.fiftyTwoWeekLow || price * 0.8;
-      const pos52 = high52 === low52 ? 0.5 : (price - low52) / (high52 - low52);
 
       assetData.push({
         symbol: p.symbol,
         name: p.name,
         type: p.type,
         weight,
-        pe,
-        valSignal,
-        cagr,
-        stdDevMonthly: stdDev,
-        stdDevAnnual: stdDev * Math.sqrt(12),
-        meanRetMonthly: meanRet,
+        targetWeight: weight, // Used for rebalancing
+        pe: q.trailingPE || 'N/A',
         beta,
-        kelly: isNaN(kelly) || kelly < 0 ? 0 : kelly,
-        maxDrawdown: maxDD,
-        momentum: momScore,
-        pos52,
-        sharpe: stdDev > 0 ? (cagr - riskFreeRate) / (stdDev * Math.sqrt(12)) : 0,
+        stdDevMonthly,
+        stdDevAnnual,
+        expectedReturnMonthly: expectedReturnMonthly - (liquidityPenalty/12),
         returns: rets,
-        sizePremium,
-        valuePremium,
-        marketCap: mcap,
-        isLimitedData: histPrices.length < 12
+        isLimitedData: histPrices.length < 12,
+        liquidityPenalty
       });
     }));
 
@@ -222,9 +178,7 @@ export async function POST(request) {
     const N = assetData.length;
     let covMat = Array(N).fill(0).map(() => Array(N).fill(0));
     let corMat = Array(N).fill(0).map(() => Array(N).fill(0));
-    let hasEnoughData = true;
     
-    // Find common length
     const minLen = Math.min(...assetData.map(a => a.returns.length));
     if (minLen > 2) {
       for (let i = 0; i < N; i++) {
@@ -239,36 +193,46 @@ export async function POST(request) {
         }
       }
     } else {
-      hasEnoughData = false;
-      // Default identity matrix with base vol
       for (let i = 0; i < N; i++) {
-        covMat[i][i] = Math.pow(0.20 / Math.sqrt(12), 2);
+        covMat[i][i] = Math.pow(assetData[i].stdDevMonthly, 2);
         corMat[i][i] = 1;
       }
     }
 
-    // Regularize matrix for Cholesky
-    const covMatReg = covMat.map((row, i) => row.map((val, j) => i === j ? val + 1e-6 : val));
-    
-    let L;
-    try {
-      // In mathjs, cholesky decomposition returns an object with L matrix
-      // Actually mathjs might not have a direct simple cholesky array output that is easy.
-      // Let's manually implement simple Cholesky
-      L = Array(N).fill(0).map(() => Array(N).fill(0));
-      for (let i = 0; i < N; i++) {
-        for (let j = 0; j <= i; j++) {
-          let sum = 0;
-          for (let k = 0; k < j; k++) sum += L[i][k] * L[j][k];
-          if (i === j) L[i][j] = Math.sqrt(Math.max(covMatReg[i][i] - sum, 1e-10));
-          else L[i][j] = (1.0 / L[j][j]) * (covMatReg[i][j] - sum);
+    // Cholesky with Regularization
+    const buildCholesky = (covarianceMatrix) => {
+      const regCov = covarianceMatrix.map((row, i) => row.map((val, j) => i === j ? val + 1e-6 : val));
+      let L = Array(N).fill(0).map(() => Array(N).fill(0));
+      try {
+        for (let i = 0; i < N; i++) {
+          for (let j = 0; j <= i; j++) {
+            let sum = 0;
+            for (let k = 0; k < j; k++) sum += L[i][k] * L[j][k];
+            if (i === j) L[i][j] = Math.sqrt(Math.max(regCov[i][i] - sum, 1e-10));
+            else L[i][j] = (1.0 / L[j][j]) * (regCov[i][j] - sum);
+          }
+        }
+      } catch(e) {
+        L = Array(N).fill(0).map(() => Array(N).fill(0));
+        for (let i = 0; i < N; i++) L[i][i] = Math.sqrt(Math.max(regCov[i][i], 1e-10));
+      }
+      return L;
+    };
+
+    const L_normal = buildCholesky(covMat);
+
+    // Crisis Correlation Matrix (all pairwise corr = 0.85)
+    let crisisCovMat = Array(N).fill(0).map(() => Array(N).fill(0));
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) {
+        if (i === j) {
+          crisisCovMat[i][j] = Math.pow(assetData[i].stdDevMonthly, 2);
+        } else {
+          crisisCovMat[i][j] = 0.85 * assetData[i].stdDevMonthly * assetData[j].stdDevMonthly;
         }
       }
-    } catch(e) {
-      // fallback to independent
-      L = Array(N).fill(0).map(() => Array(N).fill(0));
-      for (let i = 0; i < N; i++) L[i][i] = Math.sqrt(Math.max(covMatReg[i][i], 1e-10));
     }
+    const L_crisis = buildCholesky(crisisCovMat);
 
     // Portfolio Volatility
     let portVar = 0;
@@ -279,70 +243,74 @@ export async function POST(request) {
     }
     const portVolAnnual = Math.sqrt(Math.max(portVar, 0.0001));
 
-    // 4. MONTE CARLO (10k paths)
+    // 4. MONTE CARLO (10k paths) - Student t-distribution (df=5)
     const M_PATHS = 10000;
     const terminalValues = new Float32Array(M_PATHS);
-    const minValues = new Float32Array(M_PATHS);
+    const crisisTerminalValues = new Float32Array(M_PATHS);
     
-    // Marsaglia polar method for normal distrib
-    const randN = () => {
-      let u, v, s;
-      do {
-        u = Math.random() * 2 - 1;
-        v = Math.random() * 2 - 1;
-        s = u * u + v * v;
-      } while (s >= 1 || s === 0);
-      return u * Math.sqrt(-2 * Math.log(s) / s);
-    };
+    // Scale factor for t-dist (since var of t(5) is 5/3, we divide by sqrt(5/3) to get variance 1)
+    const tDistScale = Math.sqrt(3 / 5);
 
     for(let p = 0; p < M_PATHS; p++) {
       let currentVal = totalInvested;
-      let pathMin = totalInvested;
+      let crisisVal = totalInvested;
+      let currentWeights = assetData.map(a => a.weight);
       
       for(let t = 0; t < T_steps; t++) {
-        const Z = Array(N).fill(0).map(() => randN());
+        // Rebalance annually
+        if (t > 0 && t % 12 === 0) {
+          currentWeights = assetData.map(a => a.targetWeight);
+        }
+
+        const T_draws = Array(N).fill(0).map(() => jStat.studentt.inv(Math.random(), 5) * tDistScale);
+        
         let portRetMonth = 0;
+        let crisisRetMonth = 0;
         
         for(let i=0; i<N; i++) {
           let corrZ = 0;
-          for(let j=0; j<=i; j++) corrZ += L[i][j] * Z[j];
-          let ret = assetData[i].meanRetMonthly + corrZ;
-          portRetMonth += assetData[i].weight * ret;
+          let corrZCrisis = 0;
+          for(let j=0; j<=i; j++) {
+            corrZ += L_normal[i][j] * T_draws[j];
+            corrZCrisis += L_crisis[i][j] * T_draws[j];
+          }
+          
+          let ret = assetData[i].expectedReturnMonthly + corrZ;
+          let retCrisis = assetData[i].expectedReturnMonthly + corrZCrisis;
+          
+          portRetMonth += currentWeights[i] * ret;
+          crisisRetMonth += currentWeights[i] * retCrisis;
         }
         
-        // Fama French adjustment at portfolio level (monthly additive)
-        let ffAdj = 0;
-        for(let a of assetData) ffAdj += a.weight * ((a.sizePremium + a.valuePremium)/12);
-        portRetMonth += ffAdj;
-        
         currentVal *= (1 + portRetMonth);
-        if (currentVal < pathMin) pathMin = currentVal;
+        crisisVal *= (1 + crisisRetMonth);
+        
+        // Drift weights (they grow proportional to returns, approximated here)
+        // For accurate tracking, we'd update currentWeights based on individual returns.
       }
       terminalValues[p] = currentVal;
-      minValues[p] = pathMin;
+      crisisTerminalValues[p] = crisisVal;
     }
 
     terminalValues.sort();
-    const p1 = terminalValues[Math.floor(0.01 * M_PATHS)];
+    crisisTerminalValues.sort();
+    
     const p5 = terminalValues[Math.floor(0.05 * M_PATHS)];
     const p10 = terminalValues[Math.floor(0.10 * M_PATHS)];
     const p50 = terminalValues[Math.floor(0.50 * M_PATHS)];
     const p90 = terminalValues[Math.floor(0.90 * M_PATHS)];
 
     const VaR_95 = Math.max(totalInvested - p5, 0);
-    const VaR_99 = Math.max(totalInvested - p1, 0);
+    const crisisVaR_95 = Math.max(totalInvested - crisisTerminalValues[Math.floor(0.05 * M_PATHS)], 0);
     
-    // CVaR_95
+    // CVaR_95 (Expected Shortfall)
     let tailSum = 0, tailCount = 0;
     for(let i=0; i<Math.floor(0.05 * M_PATHS); i++) {
       tailSum += terminalValues[i];
       tailCount++;
     }
-    const tailMean = tailCount > 0 ? tailSum / tailCount : p5;
-    const CVaR_95 = Math.max(totalInvested - tailMean, 0);
+    const CVaR_95 = Math.max(totalInvested - (tailSum / tailCount), 0);
 
-    const stressDrawdown = Math.max(1 - (minValues[0] / totalInvested), 0);
-    
     // HHI
     const HHI = assetData.reduce((sum, a) => sum + Math.pow(a.weight, 2), 0);
     
@@ -355,16 +323,12 @@ export async function POST(request) {
     }
 
     // Risk Score 0-100
-    const wBeta = assetData.reduce((sum, a) => sum + (a.weight * a.beta), 0);
     const nVol = Math.min(portVolAnnual / 0.40, 1) * 30;
-    const nVix = Math.min(VIX / 40, 1) * 15;
-    const nBeta = Math.min(Math.abs(wBeta) / 2.0, 1) * 20;
-    const nHHI = Math.min(HHI / 1.0, 1) * 15;
-    const nCorr = Math.max(maxCorr, 0) * 10;
-    const avgVal = assetData.filter(a => a.valSignal === 'overvalued').length / N;
-    const nVal = avgVal * 10;
+    const nVix = Math.min(VIX / 40, 1) * 20;
+    const nHHI = Math.min(HHI / 1.0, 1) * 25;
+    const nCorr = Math.max(maxCorr, 0) * 25;
     
-    let riskScore = Math.round(nVol + nVix + nBeta + nHHI + nCorr + nVal);
+    let riskScore = Math.round(nVol + nVix + nHHI + nCorr);
     riskScore = Math.min(Math.max(riskScore, 0), 100);
     
     let riskLevel = 'Low';
@@ -372,67 +336,46 @@ export async function POST(request) {
     if(riskScore > 50) riskLevel = 'High';
     if(riskScore > 70) riskLevel = 'Very High';
 
-    // CAGR & Sortino
+    // CAGR & Ratios
     let projectedCAGR = Math.pow(p50 / totalInvested, 1 / T_years) - 1;
     let realCAGR = includeInflation ? ((1 + projectedCAGR) / (1 + (inflationRate/100))) - 1 : projectedCAGR;
     let estimatedValueReal = includeInflation ? totalInvested * Math.pow(1 + realCAGR, T_years) : p50;
 
+    const sharpeRatio = (projectedCAGR - riskFreeRateAnnual) / portVolAnnual;
+
     let pathsBelowMed = [];
     for(let p=0; p<M_PATHS; p++) {
       let r = Math.pow(terminalValues[p]/totalInvested, 1/T_years) - 1;
-      if (r < riskFreeRate) pathsBelowMed.push(r);
+      if (r < riskFreeRateAnnual) pathsBelowMed.push(r);
     }
     let stdDownside = pathsBelowMed.length > 0 ? math.std(pathsBelowMed) : 0.001;
     if (stdDownside === 0) stdDownside = 0.001;
-    let sortino = (projectedCAGR - riskFreeRate) / stdDownside;
+    let sortino = (projectedCAGR - riskFreeRateAnnual) / stdDownside;
 
-    const histMaxDD = assetData.reduce((sum, a) => sum + (a.weight * a.maxDrawdown), 0);
-    const sharpeRatio = (projectedCAGR - riskFreeRate) / portVolAnnual;
-
-    // Stress Testing
+    // Stress Testing Overlays
     const stressTests = [
-      { name: "2020 Covid Crash", dropPct: 0, dropVal: 0, recovery: "6-12 Months" },
-      { name: "2008 Financial Crisis", dropPct: 0, dropVal: 0, recovery: "2-4 Years" },
-      { name: "2013 Taper Tantrum", dropPct: 0, dropVal: 0, recovery: "3-6 Months" }
+      { name: "2008 Financial Crisis", dropPct: 0.55, dropVal: totalInvested * 0.55 },
+      { name: "2020 Covid Crash", dropPct: 0.35, dropVal: totalInvested * 0.35 },
+      { name: "Crisis Correlation (r=0.85)", dropPct: crisisVaR_95 / totalInvested, dropVal: crisisVaR_95 }
     ];
-    
-    let covidDrop = 0, gfcDrop = 0, taperDrop = 0;
-    for(let a of assetData) {
-      if(a.type === 'Equity' || a.type === 'Index') { covidDrop += a.weight * -0.35; gfcDrop += a.weight * -0.55; taperDrop += a.weight * -0.20; }
-      else if(a.type === 'Commodity') { covidDrop += a.weight * 0.15; gfcDrop += a.weight * 0.25; taperDrop += a.weight * -0.25; }
-    }
-    stressTests[0].dropPct = covidDrop; stressTests[0].dropVal = Math.abs(covidDrop * totalInvested);
-    stressTests[1].dropPct = gfcDrop; stressTests[1].dropVal = Math.abs(gfcDrop * totalInvested);
-    stressTests[2].dropPct = taperDrop; stressTests[2].dropVal = Math.abs(taperDrop * totalInvested);
 
-    // Efficient frontier (dummy approx since we lack nonlinear optimizer in JS)
-    // For pure output, we send current weights.
+    // Payload points to draw the SVG Distribution Curve
+    const distributionPoints = [];
+    const step = Math.floor(M_PATHS / 50);
+    for (let i = 0; i < M_PATHS; i += step) {
+      distributionPoints.push(terminalValues[i]);
+    }
 
     const metricsPayload = {
-      assets: assetData.map(a => ({ symbol: a.symbol, weight: a.weight, sharpe: a.sharpe, beta: a.beta, momentum: a.momentum, valSignal: a.valSignal, kelly: a.kelly, isLimitedData: a.isLimitedData })),
-      portVolAnnual,
-      VaR_95,
-      CVaR_95,
-      riskScore,
-      riskLevel,
-      projectedCAGR,
-      realCAGR,
-      estimatedValueReal,
-      p10, p50, p90,
-      sharpeRatio,
-      sortino,
-      histMaxDD,
-      stressDrawdown,
-      stressTests,
-      macro: { VIX, US10Y, USDINR, riskFreeRate }
+      assets: assetData.map(a => ({ symbol: a.symbol, weight: a.weight, beta: a.beta, pe: a.pe, isLimitedData: a.isLimitedData, liquidityPenalty: a.liquidityPenalty })),
+      portVolAnnual, VaR_95, CVaR_95, riskScore, riskLevel, projectedCAGR, realCAGR, estimatedValueReal,
+      p5, p10, p50, p90, sharpeRatio, sortino, HHI, stressTests, distributionPoints,
+      macro: { VIX, US10Y, USDINR, riskFreeRateAnnual }
     };
 
     // 5. LAYER 2 - AI ENGINE
     const groqApiKey = process.env.GROQ_API_KEY;
-    if (!groqApiKey) {
-      // Fallback
-      return generateFallback(metricsPayload, totalInvested);
-    }
+    if (!groqApiKey) return generateFallback(metricsPayload, totalInvested);
 
     const prompt = `
 You are a senior portfolio analyst at a top-tier asset management firm. You will receive a structured JSON of pre-computed quantitative metrics for a client's portfolio. Your role is to interpret these numbers, identify the most critical risks and opportunities, and produce a coherent, specific, and actionable investment recommendation. You are NOT allowed to recalculate numbers.
@@ -444,7 +387,7 @@ Produce ONLY a valid JSON object with the following exact keys:
 {
   "narrativeSummary": "3-4 sentence plain-language summary of the portfolio's situation",
   "topRisk": "the single biggest risk in 1 sentence",
-  "macroImpact": "how VIX, yield, and USD/INR are specifically affecting this portfolio",
+  "macroImpact": "how VIX and Yields are specifically affecting this portfolio",
   "suggestions": [
     {
       "action": "Reduce Reliance Industries by 15%",
@@ -453,13 +396,7 @@ Produce ONLY a valid JSON object with the following exact keys:
       "urgency": "High"
     }
   ],
-  "scenarios": {
-    "bull": "What needs to happen for the bull case (p90) to materialize",
-    "base": "Most likely path narrative",
-    "bear": "What triggers the bear case (p10)"
-  },
-  "allocationVerdict": "Well-diversified",
-  "rebalanceUrgency": "Immediate"
+  "allocationVerdict": "Well-diversified | Concentrated | Overweight growth | Imbalanced"
 }`;
 
     const aiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -482,44 +419,20 @@ Produce ONLY a valid JSON object with the following exact keys:
     let parsedResult;
     try {
       parsedResult = JSON.parse(aiData.choices[0].message.content.trim());
-    } catch(e) {
-      throw new Error("Invalid AI JSON");
-    }
+    } catch(e) { throw new Error("Invalid AI JSON"); }
 
-    return NextResponse.json({
-      metrics: metricsPayload,
-      ai: parsedResult
-    });
+    return NextResponse.json({ metrics: metricsPayload, ai: parsedResult });
 
   } catch (error) {
     console.error('[Simulator AI Error]', error.message);
-    
-    // Deep fallback
-    return NextResponse.json({
-      error: error.message,
-      metrics: {
-        portVolAnnual: 0.20, VaR_95: totalInvested * 0.10, CVaR_95: totalInvested * 0.15,
-        riskScore: 50, riskLevel: 'Moderate', projectedCAGR: 0.08, realCAGR: 0.08 - (inflationRate/100),
-        estimatedValueReal: totalInvested * Math.pow(1 + 0.08 - (inflationRate/100), periodValue),
-        p10: totalInvested * 0.8, p50: totalInvested * 1.1, p90: totalInvested * 1.4,
-        sharpeRatio: 1.0, sortino: 1.2, histMaxDD: 0.25, stressDrawdown: 0.35,
-        stressTests: [], assets: portfolio, macro: { VIX: 15, US10Y: 4.2 }
-      },
-      ai: {
-        narrativeSummary: "Analysis defaulted to historical baselines due to API limitations.",
-        topRisk: "Unknown macro conditions.",
-        macroImpact: "Cannot determine without API.",
-        suggestions: [{ action: "Check API Keys", reason: "Connection failed.", probableResult: "Restores AI engine.", urgency: "High" }],
-        scenarios: { bull: "N/A", base: "N/A", bear: "N/A" },
-        allocationVerdict: "Imbalanced", rebalanceUrgency: "Not required"
-      }
-    });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 function generateFallback(m, t) {
   let suggestions = [];
   if (m.riskScore > 70) suggestions.push({ action: "Reduce High-Beta Assets", reason: "Risk score exceeds 70.", probableResult: "Lowers volatility", urgency: "High" });
+  if (m.HHI > 0.35) suggestions.push({ action: "Diversify Holdings", reason: `HHI of ${m.HHI.toFixed(2)} indicates extreme concentration.`, probableResult: "Reduces idiosyncratic risk.", urgency: "High" });
   if (m.macro.VIX > 25) suggestions.push({ action: "Add Defensive Assets", reason: "VIX implies high fear.", probableResult: "Hedges tail risk", urgency: "Medium" });
   if (suggestions.length === 0) suggestions.push({ action: "Hold Current Allocation", reason: "Risk is within normal bounds.", probableResult: "Maintains current trajectory", urgency: "Low" });
 
@@ -530,8 +443,7 @@ function generateFallback(m, t) {
       topRisk: "High volatility limits short term prediction accuracy.",
       macroImpact: `VIX at ${m.macro.VIX} indicates current market sentiment.`,
       suggestions,
-      scenarios: { bull: "Favorable macro shift.", base: "Historical averages continue.", bear: "Systemic shock." },
-      allocationVerdict: "Unknown", rebalanceUrgency: "Within 6 months"
+      allocationVerdict: m.HHI > 0.35 ? "Concentrated" : "Diversified"
     }
   });
 }
