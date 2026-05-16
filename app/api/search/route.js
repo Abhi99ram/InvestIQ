@@ -22,7 +22,7 @@ export async function GET(request) {
     
     const data = {
       results: (result.quotes || [])
-        .filter(r => r.quoteType === 'EQUITY' || r.quoteType === 'ETF' || r.quoteType === 'INDEX')
+        .filter(r => ['EQUITY', 'ETF', 'INDEX', 'FUTURE', 'CRYPTOCURRENCY', 'CURRENCY'].includes(r.quoteType))
         .map(r => ({ symbol: r.symbol, name: r.shortname || r.longname || r.symbol, exchange: r.exchange, type: r.quoteType }))
         .slice(0, 10)
     };
