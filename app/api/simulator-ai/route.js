@@ -128,9 +128,15 @@ export async function POST(request) {
       const price = q.regularMarketPrice || p.price;
       const weight = (p.shares * price) / totalInvested;
       
+      // UPGRADE 1: Exponentially Weighted Moving Average (EWMA) Volatility
       let stdDevMonthly = 0;
       if (rets.length > 0) {
-        stdDevMonthly = math.std(rets);
+        const lambda = 0.90; // Emphasize recent volatility
+        let ewmaVar = math.variance(rets) || 0.001; 
+        for(let i=1; i<rets.length; i++) {
+           ewmaVar = lambda * ewmaVar + (1 - lambda) * Math.pow(rets[i], 2);
+        }
+        stdDevMonthly = Math.sqrt(ewmaVar);
       } else {
         stdDevMonthly = 0.20 / Math.sqrt(12);
       }
@@ -152,12 +158,31 @@ export async function POST(request) {
         }
       }
 
-      // ADDITION: Dividend Yield Integration
       const divYieldAnnual = q.trailingAnnualDividendYield || q.dividendYield || 0;
       
-      // Expected return incorporates CAPM + actual dividend yield
+      // UPGRADE 2: Fama-French 3-Factor Approximation (Size & Value Premiums)
+      let sizePremium = 0;
+      let valuePremium = 0;
+      
+      if (q.marketCap && q.marketCap > 0 && !isMetal && !p.symbol.startsWith('^')) {
+         const capThreshold = isIndian ? 150e9 : 2e9; // 150B INR or 2B USD roughly
+         if (q.marketCap < capThreshold) sizePremium = 0.015; // 1.5% size premium
+      }
+      
+      if (q.trailingPE && q.trailingPE > 0 && !isMetal && !p.symbol.startsWith('^')) {
+         if (q.trailingPE < 15) valuePremium = 0.015; // 1.5% value premium
+         else if (q.trailingPE > 40) valuePremium = -0.01; // Overvalued penalty
+      }
+
+      // UPGRADE 3: FX Drift for global portfolios mapped to INR
+      let fxDriftAnnual = 0;
+      if (!isIndian && !p.symbol.startsWith('^NSEI') && !p.symbol.endsWith('.BO')) {
+         fxDriftAnnual = 0.025; // Historical average 2.5% INR depreciation vs USD
+      }
+
+      // Final Total Expected Return
       const capmReturnAnnual = riskFreeRateAnnual + beta * equityRiskPremium;
-      const totalExpectedReturnAnnual = capmReturnAnnual + divYieldAnnual;
+      let totalExpectedReturnAnnual = capmReturnAnnual + divYieldAnnual + sizePremium + valuePremium + fxDriftAnnual;
       const expectedReturnMonthly = Math.pow(1 + totalExpectedReturnAnnual, 1/12) - 1;
 
       let liquidityPenalty = 0;
@@ -167,7 +192,6 @@ export async function POST(request) {
         if (turnoverRatio < 0.001) liquidityPenalty = 0.02;
       }
       
-      // ADDITION: Geography & Sector extraction
       let sector = q.sector || (isMetal ? 'Commodities' : (isIndian ? 'Indian Equity' : 'Global Equity'));
       if (p.symbol.startsWith('^')) sector = 'Index / Macro';
       let geo = isIndian ? 'India' : 'US/Global';
@@ -181,12 +205,15 @@ export async function POST(request) {
         pe: q.trailingPE || 'N/A',
         beta,
         divYieldAnnual,
+        sizePremium,
+        valuePremium,
+        fxDriftAnnual,
         sector,
         geo,
         stdDevMonthly,
         stdDevAnnual,
         expectedReturnMonthly: expectedReturnMonthly - (liquidityPenalty/12),
-        expectedReturnAnnual, // used for optimization
+        expectedReturnAnnual: totalExpectedReturnAnnual,
         returns: rets,
         isLimitedData: histPrices.length < 12,
         liquidityPenalty
@@ -260,12 +287,10 @@ export async function POST(request) {
 
     const M_PATHS = 10000;
     const terminalValues = new Float32Array(M_PATHS);
-    const crisisTerminalValues = new Float32Array(M_PATHS);
+    const crisisTerminalValues = new Float32Array(M_PATHS); // Parallel full-crisis run for deterministic testing
     const tDistScale = Math.sqrt(3 / 5);
     
-    // ADDITION: Interactive Paths tracking
     const pathTracking = []; 
-    // We will store all paths for a subset of steps (yearly) to find p5/p50/p90 at each step
     const yearlySnapshots = [];
     for(let i=0; i<=Math.ceil(T_years); i++) yearlySnapshots.push(new Float32Array(M_PATHS));
 
@@ -287,16 +312,26 @@ export async function POST(request) {
         let portRetMonth = 0;
         let crisisRetMonth = 0;
         
+        // UPGRADE 4: Regime-Switching Monte Carlo
+        // At every month, there is a 2% chance the market enters a synchronized crash regime.
+        const isCrashRegime = Math.random() < 0.02;
+        const activeL = isCrashRegime ? L_crisis : L_normal;
+        
         for(let i=0; i<N; i++) {
           let corrZ = 0;
-          let corrZCrisis = 0;
+          let corrZCrisis = 0; // Pure crisis for the parallel deterministic track
           for(let j=0; j<=i; j++) {
-            corrZ += L_normal[i][j] * T_draws[j];
+            corrZ += activeL[i][j] * T_draws[j];
             corrZCrisis += L_crisis[i][j] * T_draws[j];
           }
           
-          let ret = assetData[i].expectedReturnMonthly + corrZ;
-          let retCrisis = assetData[i].expectedReturnMonthly + corrZCrisis;
+          let expectedRet = assetData[i].expectedReturnMonthly;
+          
+          // If in a crash regime, subtract 1.5 standard deviations from the monthly return
+          let regimeAdjustedRet = isCrashRegime ? (expectedRet - (1.5 * assetData[i].stdDevMonthly)) : expectedRet;
+          
+          let ret = regimeAdjustedRet + corrZ;
+          let retCrisis = (expectedRet - (1.5 * assetData[i].stdDevMonthly)) + corrZCrisis;
           
           portRetMonth += currentWeights[i] * ret;
           crisisRetMonth += currentWeights[i] * retCrisis;
@@ -308,13 +343,11 @@ export async function POST(request) {
       terminalValues[p] = currentVal;
       crisisTerminalValues[p] = crisisVal;
       
-      // Store final year if it doesn't align perfectly with 12 months
       if (T_steps % 12 !== 0 || T_years < 1) {
         yearlySnapshots[yearlySnapshots.length - 1][p] = currentVal;
       }
     }
 
-    // Process interactive path points
     const trajectoryPath = [];
     for(let y=0; y<yearlySnapshots.length; y++) {
       let snapshot = yearlySnapshots[y];
@@ -395,7 +428,6 @@ export async function POST(request) {
       distributionPoints.push(terminalValues[i]);
     }
 
-    // ADDITION: Auto-Optimizer (Monte Carlo search for Max Sharpe)
     let bestSharpe = -999;
     let bestWeights = assetData.map(a => a.weight);
     
@@ -426,11 +458,12 @@ export async function POST(request) {
 
     const optimalWeights = assetData.map((a, i) => ({ symbol: a.symbol, weight: bestWeights[i] }));
     const hasDividends = assetData.some(a => a.divYieldAnnual > 0);
+    const hasAdvancedModeling = true;
 
     const metricsPayload = {
-      assets: assetData.map(a => ({ symbol: a.symbol, weight: a.weight, beta: a.beta, pe: a.pe, isLimitedData: a.isLimitedData, liquidityPenalty: a.liquidityPenalty, sector: a.sector, geo: a.geo, divYieldAnnual: a.divYieldAnnual })),
+      assets: assetData.map(a => ({ symbol: a.symbol, weight: a.weight, beta: a.beta, pe: a.pe, isLimitedData: a.isLimitedData, liquidityPenalty: a.liquidityPenalty, sector: a.sector, geo: a.geo, divYieldAnnual: a.divYieldAnnual, sizePremium: a.sizePremium, valuePremium: a.valuePremium, fxDriftAnnual: a.fxDriftAnnual })),
       portVolAnnual, VaR_95, CVaR_95, riskScore, riskLevel, projectedCAGR, realCAGR, estimatedValueReal,
-      p5, p10, p50, p90, sharpeRatio, sortino, HHI, stressTests, distributionPoints, trajectoryPath, optimalWeights, hasDividends,
+      p5, p10, p50, p90, sharpeRatio, sortino, HHI, stressTests, distributionPoints, trajectoryPath, optimalWeights, hasDividends, hasAdvancedModeling,
       macro: { VIX, US10Y, USDINR, riskFreeRateAnnual }
     };
 

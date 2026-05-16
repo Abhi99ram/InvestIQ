@@ -144,6 +144,15 @@ export default function Simulator() {
           Build your portfolio and let our 10,000-path Monte Carlo Engine and Dual-Layer AI analyze your true risk exposure and future trajectory.
         </p>
 
+        {results && results.metrics.hasAdvancedModeling && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', padding: '4px 10px', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)', color: '#a78bfa', borderRadius: '12px' }}>⚡ EWMA Volatility</span>
+            <span style={{ fontSize: '0.75rem', padding: '4px 10px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#7dd3fc', borderRadius: '12px' }}>📊 Fama-French Overlay</span>
+            <span style={{ fontSize: '0.75rem', padding: '4px 10px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#6ee7b7', borderRadius: '12px' }}>💱 FX Drift Adjusted</span>
+            <span style={{ fontSize: '0.75rem', padding: '4px 10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', borderRadius: '12px' }}>🚨 Regime-Switching Crash Models</span>
+          </div>
+        )}
+
         {results && (
           <button onClick={() => window.print()} style={{ position: 'absolute', right: 0, top: '20px', background: 'rgba(51,65,85,0.3)', border: '1px solid rgba(51,65,85,0.6)', padding: '10px 20px', borderRadius: '12px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
