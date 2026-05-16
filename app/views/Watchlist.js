@@ -53,10 +53,12 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
 
   // Load from localStorage
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('iq_watchlist') || '[]');
-    const savedAlerts = JSON.parse(localStorage.getItem('iq_alerts') || '[]');
-    const savedSectorAlerts = JSON.parse(localStorage.getItem('iq_sector_alerts') || '[]');
-    const savedNewsAlerts = JSON.parse(localStorage.getItem('iq_news_alerts') || '[]');
+    const userKey = user?.email ? `_${user.email}` : '';
+    const saved = JSON.parse(localStorage.getItem(`iq_watchlist${userKey}`) || '[]');
+    const savedAlerts = JSON.parse(localStorage.getItem(`iq_alerts${userKey}`) || '[]');
+    const savedSectorAlerts = JSON.parse(localStorage.getItem(`iq_sector_alerts${userKey}`) || '[]');
+    const savedNewsAlerts = JSON.parse(localStorage.getItem(`iq_news_alerts${userKey}`) || '[]');
+    
     setWatchlist(saved);
     setAlerts(savedAlerts);
     setSectorAlerts(savedSectorAlerts);
@@ -136,7 +138,8 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
     }
     if (triggered > 0) {
       setNewsAlerts(updated);
-      localStorage.setItem('iq_news_alerts', JSON.stringify(updated));
+      const userKey = user?.email ? `_${user.email}` : '';
+      localStorage.setItem(`iq_news_alerts${userKey}`, JSON.stringify(updated));
       setNotifCount(prev => prev + triggered);
     }
   }
@@ -182,7 +185,8 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
         // 3. Mark alert as inactive so it doesn't spam
         const updated = alerts.map(alert => alert.id === a.id ? { ...alert, active: false } : alert);
         setAlerts(updated);
-        localStorage.setItem('iq_alerts', JSON.stringify(updated));
+        const userKey = user?.email ? `_${user.email}` : '';
+        localStorage.setItem(`iq_alerts${userKey}`, JSON.stringify(updated));
       }
     });
     setNotifCount(triggered);
@@ -204,7 +208,8 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
     if (watchlist.includes(sym)) return;
     const updated = [...watchlist, sym];
     setWatchlist(updated);
-    localStorage.setItem('iq_watchlist', JSON.stringify(updated));
+    const userKey = user?.email ? `_${user.email}` : '';
+    localStorage.setItem(`iq_watchlist${userKey}`, JSON.stringify(updated));
     fetchWatchlistData(updated);
     setNewSymbol('');
     setShowAddStock(false);
@@ -213,7 +218,8 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
   function removeStock(sym) {
     const updated = watchlist.filter(s => s !== sym);
     setWatchlist(updated);
-    localStorage.setItem('iq_watchlist', JSON.stringify(updated));
+    const userKey = user?.email ? `_${user.email}` : '';
+    localStorage.setItem(`iq_watchlist${userKey}`, JSON.stringify(updated));
   }
 
   async function addAlert() {
@@ -221,7 +227,8 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
     const alert = { symbol: alertSymbol.toUpperCase(), targetPrice: parseFloat(alertPrice), direction: alertDir, active: true, id: Date.now(), createdAt: new Date().toISOString() };
     const updated = [...alerts, alert];
     setAlerts(updated);
-    localStorage.setItem('iq_alerts', JSON.stringify(updated));
+    const userKey = user?.email ? `_${user.email}` : '';
+    localStorage.setItem(`iq_alerts${userKey}`, JSON.stringify(updated));
     setAlertSymbol(''); setAlertPrice(''); setShowAddAlert(false);
 
     if (user && user.email) {
@@ -240,7 +247,8 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
   function deleteAlert(id) {
     const updated = alerts.filter(a => a.id !== id);
     setAlerts(updated);
-    localStorage.setItem('iq_alerts', JSON.stringify(updated));
+    const userKey = user?.email ? `_${user.email}` : '';
+    localStorage.setItem(`iq_alerts${userKey}`, JSON.stringify(updated));
   }
 
   function addSectorAlert() {
@@ -248,14 +256,16 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
     const alert = { sector: alertSymbol, threshold: parseFloat(alertPrice), direction: alertDir, active: true, id: Date.now(), createdAt: new Date().toISOString() };
     const updated = [...sectorAlerts, alert];
     setSectorAlerts(updated);
-    localStorage.setItem('iq_sector_alerts', JSON.stringify(updated));
+    const userKey = user?.email ? `_${user.email}` : '';
+    localStorage.setItem(`iq_sector_alerts${userKey}`, JSON.stringify(updated));
     setAlertSymbol(''); setAlertPrice(''); setShowAddAlert(false);
   }
 
   function deleteSectorAlert(id) {
     const updated = sectorAlerts.filter(a => a.id !== id);
     setSectorAlerts(updated);
-    localStorage.setItem('iq_sector_alerts', JSON.stringify(updated));
+    const userKey = user?.email ? `_${user.email}` : '';
+    localStorage.setItem(`iq_sector_alerts${userKey}`, JSON.stringify(updated));
   }
 
   function addNewsAlert() {
@@ -263,14 +273,16 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
     const alert = { symbol: alertSymbol, id: Date.now(), lastSeen: Date.now(), createdAt: new Date().toISOString() };
     const updated = [...newsAlerts, alert];
     setNewsAlerts(updated);
-    localStorage.setItem('iq_news_alerts', JSON.stringify(updated));
+    const userKey = user?.email ? `_${user.email}` : '';
+    localStorage.setItem(`iq_news_alerts${userKey}`, JSON.stringify(updated));
     setAlertSymbol(''); setShowAddAlert(false);
   }
 
   function deleteNewsAlert(id) {
     const updated = newsAlerts.filter(a => a.id !== id);
     setNewsAlerts(updated);
-    localStorage.setItem('iq_news_alerts', JSON.stringify(updated));
+    const userKey = user?.email ? `_${user.email}` : '';
+    localStorage.setItem(`iq_news_alerts${userKey}`, JSON.stringify(updated));
   }
 
   return (

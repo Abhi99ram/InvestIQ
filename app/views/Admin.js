@@ -42,9 +42,11 @@ export default function Admin() {
         })
       });
       const data = await res.json();
-      if (data.emailPreviewUrl) {
-        window.open(data.emailPreviewUrl, '_blank');
-        alert(`Test alert sent to ${user.email} & ${user.mobile}!\nCheck server logs for SMS and the opened tab for the Email.`);
+      if (data.emailSent || data.emailPreviewUrl) {
+        if (data.emailPreviewUrl) window.open(data.emailPreviewUrl, '_blank');
+        alert(`Test alert sent to ${user.email} & ${user.mobile}!`);
+      } else {
+        alert('Test alert processed, but email might not have sent. Check server logs.');
       }
     } catch (e) {
       console.error(e);
