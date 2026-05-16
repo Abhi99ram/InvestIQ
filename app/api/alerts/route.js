@@ -104,6 +104,7 @@ export async function POST(request) {
         from: `"InvestIQ Alerts" <${fromAddr}>`,
         to: recipientEmail,
         subject: `⚡ InvestIQ Alert: ${symbol}`,
+        text: `Hello ${recipientEmail.split('@')[0]},\n\nInvestIQ Alert Triggered for ${symbol}!\n\n${message}\n\nTriggered at: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST\n\nInvestIQ — Your Financial Intelligence Hub`,
         html: emailHtml,
       });
 

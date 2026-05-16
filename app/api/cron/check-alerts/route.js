@@ -44,6 +44,7 @@ async function sendAlertEmail(email, name, symbol, targetPrice, currentPrice, di
       from: `"InvestIQ Alerts" <${gmailUser}>`,
       to: email,
       subject: `🚨 Alert: ${symbol} is now ₹${currentPrice.toFixed(2)}`,
+      text: `InvestIQ Price Alert Triggered\n\nHi ${name || 'Investor'},\n\nYour price alert for ${symbol} has just been triggered!\nCondition: Price goes ${direction} ₹${targetPrice}\nCurrent Price: ₹${currentPrice.toFixed(2)}\n\nLog in to InvestIQ to view your portfolio and take action.`,
       html: emailHtml,
     });
     return true;
@@ -112,7 +113,8 @@ export async function GET(request) {
         }
 
         const conditionMet = (alert.direction === 'above' && currentPrice >= alert.targetPrice) ||
-                             (alert.direction === 'below' && currentPrice <= alert.targetPrice);
+                             (alert.direction === 'below' && currentPrice <= alert.targetPrice) ||
+                             (alert.direction === 'equal' && currentPrice === alert.targetPrice);
 
         debug.push(`Evaluating ${alert.symbol} for ${user.email}: current=${currentPrice}, target=${alert.targetPrice}, dir=${alert.direction}, met=${conditionMet}`);
 

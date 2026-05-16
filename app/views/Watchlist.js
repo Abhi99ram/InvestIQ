@@ -18,6 +18,28 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
   const [loading, setLoading] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
+  const [alertSymbolPrice, setAlertSymbolPrice] = useState(null);
+
+  useEffect(() => {
+    if (!alertSymbol || alertType !== 'stock') {
+      setAlertSymbolPrice(null);
+      return;
+    }
+    const delay = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/quote?symbols=${encodeURIComponent(alertSymbol)}`);
+        const data = await res.json();
+        if (data[alertSymbol] && data[alertSymbol].price) {
+          setAlertSymbolPrice(data[alertSymbol].price);
+        } else {
+          setAlertSymbolPrice(null);
+        }
+      } catch {
+        setAlertSymbolPrice(null);
+      }
+    }, 500);
+    return () => clearTimeout(delay);
+  }, [alertSymbol, alertType]);
 
   const testAlertAPI = async () => {
     try {
@@ -155,14 +177,17 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
       const price = watchlistData[a.symbol]?.price;
       if (!price) return;
       
-      const conditionMet = (a.direction === 'above' && price >= a.targetPrice) || (a.direction === 'below' && price <= a.targetPrice);
+      const conditionMet = (a.direction === 'above' && price >= a.targetPrice) || 
+                           (a.direction === 'below' && price <= a.targetPrice) || 
+                           (a.direction === 'equal' && price === a.targetPrice);
       
       if (conditionMet) {
         triggered++;
         
         // 1. Send browser notification
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(`🔔 ${a.symbol} Alert`, { body: `Price ${a.direction === 'above' ? 'above' : 'below'} ${a.targetPrice} — now at ${price.toFixed(2)}` });
+          const dirText = a.direction === 'above' ? 'above' : a.direction === 'below' ? 'below' : 'equal to';
+          new Notification(`🔔 ${a.symbol} Alert`, { body: `Price ${dirText} ${a.targetPrice} — now at ${price.toFixed(2)}` });
         }
 
         // 2. Automatically trigger the Email/SMS Backend API
@@ -343,7 +368,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                 <div>
                   <strong style={{ color: 'var(--accent-cyan)' }}>{a.symbol}</strong>
                   <span style={{ margin: '0 8px', color: 'var(--text-muted)' }}>
-                    {a.direction === 'above' ? '≥' : '≤'} {a.targetPrice}
+                    {a.direction === 'above' ? '≥' : a.direction === 'below' ? '≤' : '='} {a.targetPrice}
                   </span>
                   <span className={`tag ${a.active ? 'tag-gain' : 'tag-neutral'}`}>{a.active ? 'Active' : 'Triggered'}</span>
                 </div>
@@ -449,6 +474,11 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                       ))}
                     </div>
                   )}
+                  {alertSymbolPrice !== null && alertType === 'stock' && (
+                    <div style={{ marginTop: 8, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                      Current Price: <strong style={{ color: 'var(--text-primary)' }}>₹{alertSymbolPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong>
+                    </div>
+                  )}
                 </>
               ) : (
                 <input className="form-input" value={alertSymbol} onChange={e => setAlertSymbol(e.target.value)} placeholder="e.g. Banking" />
@@ -465,6 +495,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className={`chip ${alertDir === 'above' ? 'selected' : ''}`} onClick={() => setAlertDir('above')}>▲ Above / ≥</button>
                     <button className={`chip ${alertDir === 'below' ? 'selected' : ''}`} onClick={() => setAlertDir('below')}>▼ Below / ≤</button>
+                    <button className={`chip ${alertDir === 'equal' ? 'selected' : ''}`} onClick={() => setAlertDir('equal')}>= Equal / =</button>
                   </div>
                 </div>
               </>

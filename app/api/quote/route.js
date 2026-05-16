@@ -39,8 +39,9 @@ export async function GET(request) {
     const fetchPromises = toFetch.map(async (symbol) => {
       try {
         const quote = await yahooFinance.quote(symbol);
+        const COMMODITY_MAP = { 'GC=F': 'Gold', 'SI=F': 'Silver', 'CL=F': 'Crude Oil', 'BZ=F': 'Brent Crude', 'NG=F': 'Natural Gas' };
         const data = {
-          symbol: quote.symbol, name: quote.shortName || quote.longName || symbol,
+          symbol: quote.symbol, name: COMMODITY_MAP[symbol] || quote.shortName || quote.longName || symbol,
           price: quote.regularMarketPrice, change: quote.regularMarketChange,
           changePercent: quote.regularMarketChangePercent,
           previousClose: quote.regularMarketPreviousClose, open: quote.regularMarketOpen,
