@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 
 export default function Simulator() {
   const [portfolio, setPortfolio] = useState([]); // { symbol, name, price, shares, type }
@@ -7,10 +7,12 @@ export default function Simulator() {
   const [isSearching, setIsSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
-  const [years, setYears] = useState(10);
+  // Period state
+  const [periodValue, setPeriodValue] = useState(1);
+  const [periodUnit, setPeriodUnit] = useState('Years'); // Days, Weeks, Months, Years
+  
   const [inflationRate, setInflationRate] = useState(6);
   const [includeInflation, setIncludeInflation] = useState(true);
-  const [monthlyContribution, setMonthlyContribution] = useState(5000); // SIP
 
   // AI State
   const [aiAnalysis, setAiAnalysis] = useState(null);
@@ -56,9 +58,9 @@ export default function Simulator() {
     else if (symbol === '^NSEI') { displayName = 'Nifty 50'; displayType = 'Index'; }
 
     try {
-      const res = await fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`);
+      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbol)}`);
       const data = await res.json();
-      const price = data.price || 0;
+      const price = data[symbol]?.price || 0;
       
       setPortfolio([...portfolio, { symbol, name: displayName, price, shares: 1, type: displayType }]);
       setSearchQuery('');
@@ -89,69 +91,41 @@ export default function Simulator() {
   };
 
   // Static Calculations for Invested Amount
-  const baseMetrics = useMemo(() => {
-    const currentPortfolioValue = portfolio.reduce((acc, p) => acc + (p.price * p.shares), 0);
-    const months = years * 12;
-    const totalInvestedSIP = monthlyContribution * months;
-    const totalInvested = currentPortfolioValue + totalInvestedSIP;
-    return { currentPortfolioValue, totalInvested };
-  }, [portfolio, years, monthlyContribution]);
+  const currentPortfolioValue = useMemo(() => {
+    return portfolio.reduce((acc, p) => acc + (p.price * p.shares), 0);
+  }, [portfolio]);
 
   const runAiAnalysis = async () => {
     if (portfolio.length === 0) return;
     setIsAnalyzing(true);
+    setAiAnalysis(null);
     try {
       const res = await fetch('/api/simulator-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ portfolio, years, monthlyContribution, inflationRate, includeInflation })
+        body: JSON.stringify({ 
+          portfolio, 
+          periodValue, 
+          periodUnit, 
+          inflationRate, 
+          includeInflation,
+          totalInvested: currentPortfolioValue
+        })
       });
       const data = await res.json();
       
       if (!data.error) {
         setAiAnalysis(data);
+      } else {
+        alert("AI Analysis failed: " + data.error);
       }
     } catch (e) {
       console.error(e);
+      alert("Failed to connect to AI engine.");
     } finally {
       setIsAnalyzing(false);
     }
   };
-
-  // Calculate final numbers if AI is ready
-  const finalAnalysis = useMemo(() => {
-    if (!aiAnalysis) return null;
-
-    const currentPortfolioValue = baseMetrics.currentPortfolioValue;
-    const weightedReturn = aiAnalysis.projectedCAGR || 12;
-    
-    const months = years * 12;
-    const monthlyRate = weightedReturn / 100 / 12;
-    
-    const fvLumpsum = currentPortfolioValue * Math.pow(1 + (weightedReturn / 100), years);
-    let fvSip = 0;
-    if (monthlyRate > 0) {
-      fvSip = monthlyContribution * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate) * (1 + monthlyRate);
-    }
-    
-    let totalFutureValue = fvLumpsum + fvSip;
-    let adjustedValue = totalFutureValue;
-    
-    if (includeInflation) {
-      adjustedValue = totalFutureValue / Math.pow(1 + (inflationRate / 100), years);
-    }
-
-    const wealthGained = adjustedValue - baseMetrics.totalInvested;
-    const wealthAtRisk = totalFutureValue * ((aiAnalysis.maxDrawdownPct || 20) / 100);
-
-    return {
-      futureValue: totalFutureValue,
-      adjustedValue,
-      wealthGained,
-      wealthAtRisk,
-      ...aiAnalysis
-    };
-  }, [aiAnalysis, baseMetrics, years, monthlyContribution, includeInflation, inflationRate]);
 
   return (
     <div className="simulator-container" style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease' }}>
@@ -160,7 +134,7 @@ export default function Simulator() {
           Real-Time AI Simulator
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>
-          Build your portfolio with up to 10 assets. Our AI engine runs realistic, real-time projections based on live market conditions.
+          Build your portfolio. Our AI layers individual asset predictions and macroeconomic factors to generate a personalized wealth projection and reallocation strategy.
         </p>
       </div>
 
@@ -269,31 +243,29 @@ export default function Simulator() {
           <div className="card" style={{ background: 'var(--bg-card)', padding: '25px', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
              <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ background: 'var(--accent-amber)', color: '#000', padding: '4px 10px', borderRadius: '8px', fontSize: '0.8rem' }}>Step 2</span>
-              Configure SIP & Conditions
+              Analysis Period & Conditions
             </h3>
 
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Monthly SIP Addition</label>
-                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>₹{monthlyContribution.toLocaleString('en-IN')}</span>
+            <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Investment Period</label>
+                <input 
+                  type="number" min="1" 
+                  value={periodValue} onChange={(e) => { setPeriodValue(Number(e.target.value)); setAiAnalysis(null); }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
+                />
               </div>
-              <input 
-                type="range" min="0" max="100000" step="1000" 
-                value={monthlyContribution} onChange={(e) => { setMonthlyContribution(Number(e.target.value)); setAiAnalysis(null); }}
-                style={{ width: '100%', accentColor: 'var(--accent-cyan)' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Simulation Period</label>
-                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{years} Years</span>
+              <div style={{ flex: 1 }}>
+                <select 
+                  value={periodUnit} onChange={(e) => { setPeriodUnit(e.target.value); setAiAnalysis(null); }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
+                >
+                  <option value="Days">Days</option>
+                  <option value="Weeks">Weeks</option>
+                  <option value="Months">Months</option>
+                  <option value="Years">Years</option>
+                </select>
               </div>
-              <input 
-                type="range" min="1" max="30" step="1" 
-                value={years} onChange={(e) => { setYears(Number(e.target.value)); setAiAnalysis(null); }}
-                style={{ width: '100%', accentColor: 'var(--accent-cyan)' }}
-              />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
@@ -322,9 +294,9 @@ export default function Simulator() {
             <button 
               onClick={runAiAnalysis}
               disabled={isAnalyzing || portfolio.length === 0}
-              style={{ marginTop: '20px', width: '100%', padding: '14px', borderRadius: '12px', background: 'linear-gradient(90deg, #38bdf8, #6366f1)', border: 'none', color: '#fff', fontWeight: 'bold', fontSize: '1rem', cursor: isAnalyzing || portfolio.length === 0 ? 'not-allowed' : 'pointer', opacity: isAnalyzing || portfolio.length === 0 ? 0.6 : 1 }}
+              style={{ marginTop: '20px', width: '100%', padding: '14px', borderRadius: '12px', background: 'linear-gradient(90deg, #38bdf8, #6366f1)', border: 'none', color: '#fff', fontWeight: 'bold', fontSize: '1rem', cursor: isAnalyzing || portfolio.length === 0 ? 'not-allowed' : 'pointer', opacity: isAnalyzing || portfolio.length === 0 ? 0.6 : 1, transition: 'all 0.3s' }}
             >
-              {isAnalyzing ? '🧠 AI Analyzing Real-Time Trends...' : '🚀 Generate AI Analysis'}
+              {isAnalyzing ? '🧠 AI Deep Analysis in Progress...' : '🚀 Generate AI Analysis'}
             </button>
           </div>
         </div>
@@ -334,39 +306,42 @@ export default function Simulator() {
           
           <div className="card" style={{ background: 'linear-gradient(145deg, #0f172a, #1e293b)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: '30px', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', minHeight: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             
-            {!finalAnalysis ? (
+            {!aiAnalysis ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                 {isAnalyzing ? (
                   <div style={{ animation: 'pulse 1.5s infinite' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🧠</div>
-                    <p>Fetching real-time market data...</p>
-                    <p>AI is assessing portfolio risk and projections...</p>
+                    <p>Layer 1: Assessing individual asset performance...</p>
+                    <p>Layer 2: Evaluating macroeconomic trends & risks...</p>
+                    <p style={{ color: 'var(--accent-cyan)' }}>Generating allocation strategy...</p>
                   </div>
                 ) : (
                   <div>
                     <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📊</div>
-                    <p>Add assets and configure your SIP, then click "Generate AI Analysis" to see your real-time optimized projections.</p>
+                    <p>Add assets and set your timeframe, then click "Generate AI Analysis" to execute the dual-layer intelligence engine.</p>
                   </div>
                 )}
               </div>
             ) : (
               <div style={{ animation: 'fadeIn 0.5s ease' }}>
                 <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-                  <p style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '10px' }}>Estimated Value ({years} Yrs)</p>
+                  <p style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '10px' }}>
+                    Estimated Value ({periodValue} {periodUnit})
+                  </p>
                   <h2 style={{ fontSize: '3.5rem', margin: 0, fontWeight: '800', textShadow: '0 0 20px rgba(56,189,248,0.3)', color: '#fff' }}>
-                    ₹{(includeInflation ? finalAnalysis.adjustedValue : finalAnalysis.futureValue).toLocaleString('en-IN', {maximumFractionDigits: 0})}
+                    ₹{aiAnalysis.estimatedValue.toLocaleString('en-IN', {maximumFractionDigits: 0})}
                   </h2>
-                  {includeInflation && <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '10px' }}>*Purchasing power adjusted</p>}
+                  {includeInflation && <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '10px' }}>*Purchasing power adjusted ({inflationRate}%)</p>}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div style={{ background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                       <span style={{ fontSize: '1.2rem' }}>💰</span>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Wealth Gained</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Wealth {aiAnalysis.wealthGained >= 0 ? 'Gained' : 'Lost'}</span>
                     </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#22c55e' }}>
-                      +₹{finalAnalysis.wealthGained.toLocaleString('en-IN', {maximumFractionDigits: 0})}
+                    <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: aiAnalysis.wealthGained >= 0 ? '#22c55e' : '#ef4444' }}>
+                      {aiAnalysis.wealthGained >= 0 ? '+' : '-'}₹{Math.abs(aiAnalysis.wealthGained).toLocaleString('en-IN', {maximumFractionDigits: 0})}
                     </div>
                   </div>
 
@@ -376,7 +351,7 @@ export default function Simulator() {
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Max Value at Risk</span>
                     </div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#ef4444' }}>
-                      -₹{finalAnalysis.wealthAtRisk.toLocaleString('en-IN', {maximumFractionDigits: 0})}
+                      -₹{aiAnalysis.wealthAtRisk.toLocaleString('en-IN', {maximumFractionDigits: 0})}
                     </div>
                   </div>
 
@@ -385,8 +360,8 @@ export default function Simulator() {
                       <span style={{ fontSize: '1.2rem' }}>🛡️</span>
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Risk Level</span>
                     </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: finalAnalysis.riskLevel.includes('Low') ? '#22c55e' : finalAnalysis.riskLevel.includes('Moderate') ? 'var(--accent-amber)' : '#ef4444' }}>
-                      {finalAnalysis.riskLevel} ({finalAnalysis.riskScore}%)
+                    <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: aiAnalysis.riskLevel.includes('Low') ? '#22c55e' : aiAnalysis.riskLevel.includes('Moderate') ? 'var(--accent-amber)' : '#ef4444' }}>
+                      {aiAnalysis.riskLevel} ({aiAnalysis.riskScore}%)
                     </div>
                   </div>
 
@@ -396,25 +371,30 @@ export default function Simulator() {
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Projected CAGR</span>
                     </div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
-                      {finalAnalysis.projectedCAGR.toFixed(1)}% p.a.
+                      {aiAnalysis.projectedCAGR.toFixed(1)}% p.a.
                     </div>
                   </div>
                 </div>
                 
-                {/* AI Rationale */}
-                <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: '12px' }}>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#e2e8f0', lineHeight: 1.6 }}>
-                    <strong style={{ color: 'var(--accent-cyan)' }}>AI Insights:</strong> {finalAnalysis.rationale}
-                  </p>
+                {/* Dual Layer AI Suggestions */}
+                <div style={{ marginTop: '20px', padding: '20px', background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: '12px' }}>
+                  <h4 style={{ color: 'var(--accent-cyan)', margin: '0 0 10px 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>🧠</span> AI Reallocation Strategy
+                  </h4>
+                  <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.9rem', color: '#e2e8f0', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {aiAnalysis.suggestions && aiAnalysis.suggestions.map((sug, idx) => (
+                      <li key={idx}><strong style={{ color: '#fff' }}>{sug.action}:</strong> {sug.reason} <span style={{ color: 'var(--accent-amber)', fontSize: '0.85rem' }}>({sug.probableResult})</span></li>
+                    ))}
+                  </ul>
                 </div>
 
                 <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>Total Capital Invested</p>
-                    <p style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: 0 }}>₹{baseMetrics.totalInvested.toLocaleString('en-IN')}</p>
+                    <p style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: 0 }}>₹{currentPortfolioValue.toLocaleString('en-IN')}</p>
                   </div>
                   <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '8px 16px', borderRadius: '20px', color: 'var(--accent-cyan)', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                    AI Optimized Projection
+                    Dual-Layer Engine Active
                   </div>
                 </div>
               </div>
