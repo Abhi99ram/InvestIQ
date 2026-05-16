@@ -55,6 +55,8 @@ export default function MyAccount({ user, onUpdateUser, onLogout }) {
     } finally {
       setLoading(false);
     }
+  };
+
   const handleDeleteAccount = async () => {
     if (!window.confirm('Are you absolutely sure you want to delete your account? This action cannot be undone and you will lose all saved alerts and watchlists.')) {
       return;
