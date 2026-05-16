@@ -25,13 +25,20 @@ async function sendEmailOtp(email, otp) {
         <p>Your password reset OTP is:</p>
         <h1 style="letter-spacing:4px;color:#1e293b;background:#f1f5f9;padding:10px;text-align:center;border-radius:6px;">${otp}</h1>
         <p style="font-size:12px;color:#64748b;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
+        <hr style="border:none;border-top:1px solid #eee;margin-top:20px;" />
+        <p style="font-size:11px;color:#94a3b8;line-height:1.4;">
+          <strong>To ensure delivery of future alerts, please add this email address to your contacts.</strong><br/>
+          You are receiving this email because you registered an account at InvestIQ. If you did not request this, please ignore it.<br/>
+          For support, contact investiq.helpdesk@gmail.com
+        </p>
       </div>
     `;
 
     await transporter.sendMail({
-      from: `"InvestIQ Support" <${gmailUser}>`,
+      from: '"InvestIQ Support" <' + gmailUser + '>',
       to: email,
-      subject: `InvestIQ Password Reset OTP: ${otp}`,
+      subject: \`InvestIQ Password Reset OTP: \${otp}\`,
+      text: \`Your InvestIQ OTP is: \${otp}\n\nThis OTP is valid for 10 minutes. Do not share it with anyone.\n\nTo ensure delivery of future alerts, please add this email address to your contacts.\n\nYou are receiving this email because you registered an account at InvestIQ. For support, contact investiq.helpdesk@gmail.com\`,
       html: emailHtml,
     });
     console.log(`[OTP Email] Sent to ${email} successfully.`);
@@ -55,7 +62,7 @@ async function sendWelcomeEmail(email, name) {
 
     const emailHtml = `
       <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:20px;border:1px solid #eee;border-radius:10px;">
-        <h2 style="color:#38bdf8;">Welcome to InvestIQ, ${name}! 🚀</h2>
+        <h2 style="color:#38bdf8;">Welcome to InvestIQ, ${name}!</h2>
         <p>We are thrilled to have you on board. InvestIQ is your 24/7 intelligent market companion.</p>
         <p><strong>What you can do now:</strong></p>
         <ul>
@@ -65,13 +72,20 @@ async function sendWelcomeEmail(email, name) {
         </ul>
         <p style="margin-top:20px;">If you have any questions, simply reply to this email!</p>
         <p style="font-size:12px;color:#64748b;">Happy Investing,<br/>The InvestIQ Team</p>
+        <hr style="border:none;border-top:1px solid #eee;margin-top:20px;" />
+        <p style="font-size:11px;color:#94a3b8;line-height:1.4;">
+          <strong>To ensure delivery of future alerts, please add this email address to your contacts.</strong><br/>
+          You are receiving this email because you registered an account at InvestIQ. If you wish to unsubscribe, you can delete your account via the Support tab.<br/>
+          For support, contact investiq.helpdesk@gmail.com
+        </p>
       </div>
     `;
 
     await transporter.sendMail({
-      from: `"InvestIQ" <${gmailUser}>`,
+      from: '"InvestIQ" <' + gmailUser + '>',
       to: email,
-      subject: `Welcome to InvestIQ, ${name}! 🚀`,
+      subject: \`Welcome to InvestIQ, \${name}!\`,
+      text: \`Welcome to InvestIQ, \${name}!\n\nWe are thrilled to have you on board. InvestIQ is your 24/7 intelligent market companion.\n\nWhat you can do now:\n- Set up Price Alerts to get notified instantly\n- Analyze company financials with our AI insights\n- Track market trends in real-time\n\nIf you have any questions, simply reply to this email!\n\nHappy Investing,\nThe InvestIQ Team\n\n---\nTo ensure delivery of future alerts, please add this email address to your contacts.\nYou are receiving this email because you registered an account at InvestIQ. If you wish to unsubscribe, you can delete your account via the Support tab.\`,
       html: emailHtml,
     });
     return true;

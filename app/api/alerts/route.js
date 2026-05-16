@@ -82,29 +82,27 @@ export async function POST(request) {
       const { transporter, fromAddr, isReal } = await createMailTransporter();
 
       const emailHtml = `
-        <div style="font-family:sans-serif;max-width:520px;margin:auto;background:#0d1117;color:#e5e7eb;border-radius:12px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#1a3a5c,#0d2137);padding:24px;text-align:center;">
-            <h2 style="color:#38bdf8;margin:0;font-size:20px;">⚡ InvestIQ Alert Triggered</h2>
+        <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:20px;border:1px solid #eee;border-radius:10px;">
+          <h2 style="color:#38bdf8;">InvestIQ Alert</h2>
+          <div style="background:#f8fafc;padding:15px;border-radius:8px;margin:20px 0;">
+            <p style="margin:5px 0;"><strong>Symbol:</strong> ${symbol}</p>
+            <p style="margin:5px 0;"><strong>Message:</strong> ${message}</p>
           </div>
-          <div style="padding:24px;">
-            <p style="margin:0 0 12px;">Hello ${recipientEmail.split('@')[0]},</p>
-            <div style="background:#161b22;border-left:4px solid #38bdf8;border-radius:8px;padding:16px;margin-bottom:16px;">
-              <p style="margin:0 0 6px;font-size:18px;font-weight:700;color:#38bdf8;">📊 ${symbol}</p>
-              <p style="margin:0;color:#cbd5e0;font-size:14px;">${message}</p>
-            </div>
-            <p style="font-size:12px;color:#6b7280;margin:0;">
-              🕐 Triggered at: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST<br/>
-              InvestIQ — Your Financial Intelligence Hub
-            </p>
-          </div>
+          <p>Log in to InvestIQ to view details.</p>
+          <hr style="border:none;border-top:1px solid #eee;margin-top:30px;" />
+          <p style="font-size:11px;color:#94a3b8;line-height:1.4;">
+            <strong>To ensure delivery of future alerts, please add this email address to your contacts.</strong><br/>
+            You are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to stop receiving these, please log in and delete the alert, or delete your account via the Support tab.<br/>
+            For support, contact investiq.helpdesk@gmail.com
+          </p>
         </div>
       `;
 
       const info = await transporter.sendMail({
-        from: `"InvestIQ Alerts" <${fromAddr}>`,
+        from: '"InvestIQ Alerts" <' + fromAddr + '>',
         to: recipientEmail,
-        subject: `⚡ InvestIQ Alert: ${symbol}`,
-        text: `Hello ${recipientEmail.split('@')[0]},\n\nInvestIQ Alert Triggered for ${symbol}!\n\n${message}\n\nTriggered at: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST\n\nInvestIQ — Your Financial Intelligence Hub`,
+        subject: \`InvestIQ Alert: \${symbol}\`,
+        text: \`Hello \${recipientEmail.split('@')[0]},\n\nInvestIQ Alert Triggered for \${symbol}!\n\n\${message}\n\nTriggered at: \${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST\n\nInvestIQ — Your Financial Intelligence Hub\n\n---\nTo ensure delivery of future alerts, please add this email address to your contacts.\nYou are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to unsubscribe, you can delete your alert or account via the Support tab.\`,
         html: emailHtml,
       });
 

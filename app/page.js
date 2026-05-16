@@ -9,6 +9,7 @@ import NewsFeed from './views/NewsFeed';
 import Auth from './views/Auth';
 import Admin from './views/Admin';
 import MyAccount from './views/MyAccount';
+import Support from './views/Support';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { id: 'analysis', label: 'Analysis', icon: '📈' },
   { id: 'news', label: 'News & Updates', icon: '📰' },
   { id: 'account', label: 'My Account', icon: '👤' },
+  { id: 'support', label: 'Support', icon: '🎧' },
 ];
 
 export default function Home() {
@@ -84,6 +86,7 @@ export default function Home() {
       case 'analysis': return <Analysis selectedSymbol={selectedSymbol} onSelectStock={selectStock} />;
       case 'news': return <NewsFeed />;
       case 'account': return <MyAccount user={user} onUpdateUser={handleUpdateUser} onLogout={handleLogout} />;
+      case 'support': return <Support />;
       default: return <Dashboard onSelectStock={selectStock} onSelectSector={viewSector} />;
     }
   };
