@@ -20,7 +20,7 @@ export default function Learn() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: \`Explain the financial concept: "\${query}". Make the explanation simple, clear, and tailored for a beginner investor. Include an example if possible. Do not use markdown headers, just return a simple paragraph or two.\`,
+          prompt: `Explain the financial concept: "${query}". Make the explanation simple, clear, and tailored for a beginner investor. Include an example if possible. Do not use markdown headers, just return a simple paragraph or two.`,
           messages: [],
           marketContext: {}
         })
