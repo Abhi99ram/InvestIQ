@@ -8,6 +8,7 @@ import Analysis from './views/Analysis';
 import NewsFeed from './views/NewsFeed';
 import Auth from './views/Auth';
 import Admin from './views/Admin';
+import MyAccount from './views/MyAccount';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { id: 'watchlist', label: 'Watchlist & Alerts', icon: '⭐' },
   { id: 'analysis', label: 'Analysis', icon: '📈' },
   { id: 'news', label: 'News & Updates', icon: '📰' },
+  { id: 'account', label: 'My Account', icon: '👤' },
 ];
 
 export default function Home() {
@@ -43,6 +45,11 @@ export default function Home() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('investiq_user');
+  };
+
+  const handleUpdateUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('investiq_user', JSON.stringify(updatedUser));
   };
 
   const handleSearch = useCallback(async (q) => {
@@ -76,6 +83,7 @@ export default function Home() {
       case 'watchlist': return <Watchlist onSelectStock={selectStock} setNotifCount={setNotifCount} user={user} />;
       case 'analysis': return <Analysis selectedSymbol={selectedSymbol} onSelectStock={selectStock} />;
       case 'news': return <NewsFeed />;
+      case 'account': return <MyAccount user={user} onUpdateUser={handleUpdateUser} />;
       default: return <Dashboard onSelectStock={selectStock} onSelectSector={viewSector} />;
     }
   };
