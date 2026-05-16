@@ -50,8 +50,7 @@ export async function POST(request) {
     const USDINR = macro['USDINR=X'] || 83.5;
     const IN10Y = macro['^INBMK'] || 7.1;
 
-    // Since the portfolio is denominated in INR (₹), the investor's opportunity cost 
-    // is always the Indian Risk-Free Rate, even if they hold US equities.
+    const isAllIndian = portfolio.every(p => p.symbol.endsWith('.NS') || p.symbol.endsWith('.BO') || p.symbol === '^NSEI');
     const riskFreeRateAnnual = (IN10Y || 7.1) / 100;
     const equityRiskPremium = 0.055; 
 
@@ -153,8 +152,13 @@ export async function POST(request) {
         }
       }
 
-      const expectedReturnAnnual = riskFreeRateAnnual + beta * equityRiskPremium;
-      const expectedReturnMonthly = Math.pow(1 + expectedReturnAnnual, 1/12) - 1;
+      // ADDITION: Dividend Yield Integration
+      const divYieldAnnual = q.trailingAnnualDividendYield || q.dividendYield || 0;
+      
+      // Expected return incorporates CAPM + actual dividend yield
+      const capmReturnAnnual = riskFreeRateAnnual + beta * equityRiskPremium;
+      const totalExpectedReturnAnnual = capmReturnAnnual + divYieldAnnual;
+      const expectedReturnMonthly = Math.pow(1 + totalExpectedReturnAnnual, 1/12) - 1;
 
       let liquidityPenalty = 0;
       if (q.averageVolume && q.marketCap) {
@@ -162,18 +166,27 @@ export async function POST(request) {
         const turnoverRatio = dailyTradedValue / q.marketCap;
         if (turnoverRatio < 0.001) liquidityPenalty = 0.02;
       }
+      
+      // ADDITION: Geography & Sector extraction
+      let sector = q.sector || (isMetal ? 'Commodities' : (isIndian ? 'Indian Equity' : 'Global Equity'));
+      if (p.symbol.startsWith('^')) sector = 'Index / Macro';
+      let geo = isIndian ? 'India' : 'US/Global';
 
       assetData.push({
         symbol: p.symbol,
-        name: p.name,
+        name: p.name || q.shortName || q.longName,
         type: p.type,
         weight,
         targetWeight: weight,
         pe: q.trailingPE || 'N/A',
         beta,
+        divYieldAnnual,
+        sector,
+        geo,
         stdDevMonthly,
         stdDevAnnual,
         expectedReturnMonthly: expectedReturnMonthly - (liquidityPenalty/12),
+        expectedReturnAnnual, // used for optimization
         returns: rets,
         isLimitedData: histPrices.length < 12,
         liquidityPenalty
@@ -184,7 +197,6 @@ export async function POST(request) {
     let covMat = Array(N).fill(0).map(() => Array(N).fill(0));
     let corMat = Array(N).fill(0).map(() => Array(N).fill(0));
     
-    // Intersection for correlation matrix (e.g. 5 yrs if mixed, 10 yrs if all Indian)
     const minLen = Math.min(...assetData.map(a => a.returns.length));
     if (minLen > 2) {
       for (let i = 0; i < N; i++) {
@@ -250,15 +262,24 @@ export async function POST(request) {
     const terminalValues = new Float32Array(M_PATHS);
     const crisisTerminalValues = new Float32Array(M_PATHS);
     const tDistScale = Math.sqrt(3 / 5);
+    
+    // ADDITION: Interactive Paths tracking
+    const pathTracking = []; 
+    // We will store all paths for a subset of steps (yearly) to find p5/p50/p90 at each step
+    const yearlySnapshots = [];
+    for(let i=0; i<=Math.ceil(T_years); i++) yearlySnapshots.push(new Float32Array(M_PATHS));
 
     for(let p = 0; p < M_PATHS; p++) {
       let currentVal = totalInvested;
       let crisisVal = totalInvested;
       let currentWeights = assetData.map(a => a.weight);
       
+      yearlySnapshots[0][p] = totalInvested;
+
       for(let t = 0; t < T_steps; t++) {
         if (t > 0 && t % 12 === 0) {
           currentWeights = assetData.map(a => a.targetWeight);
+          yearlySnapshots[Math.floor(t/12)][p] = currentVal;
         }
 
         const T_draws = Array(N).fill(0).map(() => jStat.studentt.inv(Math.random(), 5) * tDistScale);
@@ -286,6 +307,24 @@ export async function POST(request) {
       }
       terminalValues[p] = currentVal;
       crisisTerminalValues[p] = crisisVal;
+      
+      // Store final year if it doesn't align perfectly with 12 months
+      if (T_steps % 12 !== 0 || T_years < 1) {
+        yearlySnapshots[yearlySnapshots.length - 1][p] = currentVal;
+      }
+    }
+
+    // Process interactive path points
+    const trajectoryPath = [];
+    for(let y=0; y<yearlySnapshots.length; y++) {
+      let snapshot = yearlySnapshots[y];
+      snapshot.sort();
+      trajectoryPath.push({
+        year: y,
+        p5: snapshot[Math.floor(0.05 * M_PATHS)] || totalInvested,
+        p50: snapshot[Math.floor(0.50 * M_PATHS)] || totalInvested,
+        p90: snapshot[Math.floor(0.90 * M_PATHS)] || totalInvested
+      });
     }
 
     terminalValues.sort();
@@ -351,15 +390,47 @@ export async function POST(request) {
     ];
 
     const distributionPoints = [];
-    const step = Math.floor(M_PATHS / 50);
-    for (let i = 0; i < M_PATHS; i += step) {
+    const stepDist = Math.floor(M_PATHS / 50);
+    for (let i = 0; i < M_PATHS; i += stepDist) {
       distributionPoints.push(terminalValues[i]);
     }
 
+    // ADDITION: Auto-Optimizer (Monte Carlo search for Max Sharpe)
+    let bestSharpe = -999;
+    let bestWeights = assetData.map(a => a.weight);
+    
+    if (N > 1) {
+      for(let iter=0; iter<3000; iter++) {
+        let randWeights = Array(N).fill(0).map(() => Math.random());
+        let sumW = randWeights.reduce((a,b)=>a+b, 0);
+        randWeights = randWeights.map(w => w / sumW);
+        
+        let pRetAnn = 0;
+        for(let i=0; i<N; i++) pRetAnn += randWeights[i] * assetData[i].expectedReturnAnnual;
+        
+        let pVar = 0;
+        for(let i=0; i<N; i++) {
+          for(let j=0; j<N; j++) {
+            pVar += randWeights[i] * randWeights[j] * covMat[i][j] * 12;
+          }
+        }
+        let pVol = Math.sqrt(Math.max(pVar, 0.0001));
+        let pSharpe = (pRetAnn - riskFreeRateAnnual) / pVol;
+        
+        if (pSharpe > bestSharpe) {
+          bestSharpe = pSharpe;
+          bestWeights = [...randWeights];
+        }
+      }
+    }
+
+    const optimalWeights = assetData.map((a, i) => ({ symbol: a.symbol, weight: bestWeights[i] }));
+    const hasDividends = assetData.some(a => a.divYieldAnnual > 0);
+
     const metricsPayload = {
-      assets: assetData.map(a => ({ symbol: a.symbol, weight: a.weight, beta: a.beta, pe: a.pe, isLimitedData: a.isLimitedData, liquidityPenalty: a.liquidityPenalty })),
+      assets: assetData.map(a => ({ symbol: a.symbol, weight: a.weight, beta: a.beta, pe: a.pe, isLimitedData: a.isLimitedData, liquidityPenalty: a.liquidityPenalty, sector: a.sector, geo: a.geo, divYieldAnnual: a.divYieldAnnual })),
       portVolAnnual, VaR_95, CVaR_95, riskScore, riskLevel, projectedCAGR, realCAGR, estimatedValueReal,
-      p5, p10, p50, p90, sharpeRatio, sortino, HHI, stressTests, distributionPoints,
+      p5, p10, p50, p90, sharpeRatio, sortino, HHI, stressTests, distributionPoints, trajectoryPath, optimalWeights, hasDividends,
       macro: { VIX, US10Y, USDINR, riskFreeRateAnnual }
     };
 

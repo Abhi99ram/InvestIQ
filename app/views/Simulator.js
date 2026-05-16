@@ -3,10 +3,12 @@ import { useState, useMemo, useEffect } from 'react';
 const LOADING_STEPS = [
   "Initializing institutional quant engine...",
   "Fetching live quotes and macro indicators...",
-  "Computing 5-year historical return series...",
+  "Computing 10-year historical return series...",
+  "Extracting Trailing Dividend Yields & Sectors...",
   "Building N×N covariance matrix...",
   "Applying Cholesky decomp and Student's t-dist draws...",
   "Running 10,000 Monte Carlo paths...",
+  "Calculating Efficient Frontier (Max Sharpe)...",
   "Computing VaR, CVaR, Sharpe, and Sortino ratios...",
   "Running deterministic stress tests...",
   "Sending payload to AI Intelligence Engine...",
@@ -83,7 +85,7 @@ export default function Simulator() {
         if (prev < LOADING_STEPS.length - 1) return prev + 1;
         return prev;
       });
-    }, 600);
+    }, 500);
 
     try {
       const res = await fetch('/api/simulator-ai', {
@@ -107,13 +109,31 @@ export default function Simulator() {
     }
   };
 
+  const applyOptimalWeights = () => {
+    if (!results || !results.metrics.optimalWeights) return;
+    const opt = results.metrics.optimalWeights;
+    
+    const newPortfolio = portfolio.map(p => {
+      const optData = opt.find(x => x.symbol === p.symbol);
+      if (optData) {
+        // Calculate new shares based on optimal weight of current portfolio value
+        let targetVal = optData.weight * currentPortfolioValue;
+        let newShares = Math.max(1, Math.round(targetVal / p.price));
+        return { ...p, shares: newShares };
+      }
+      return p;
+    });
+    setPortfolio(newPortfolio);
+    setResults(null);
+  };
+
   const m = results?.metrics;
   const ai = results?.ai;
 
   return (
-    <div style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#e2e8f0' }}>
+    <div style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#e2e8f0' }} className="simulator-container">
       
-      <div style={{ marginBottom: '40px', textAlign: 'center' }}>
+      <div style={{ marginBottom: '40px', textAlign: 'center', position: 'relative' }} className="hide-on-print">
         <div style={{ display: 'inline-block', padding: '6px 16px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: '20px', color: '#38bdf8', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '15px', letterSpacing: '1px', textTransform: 'uppercase' }}>
           Next-Gen Quant Engine
         </div>
@@ -123,12 +143,19 @@ export default function Simulator() {
         <p style={{ color: '#64748b', margin: '0 auto', maxWidth: '600px', fontSize: '1.1rem', lineHeight: '1.6' }}>
           Build your portfolio and let our 10,000-path Monte Carlo Engine and Dual-Layer AI analyze your true risk exposure and future trajectory.
         </p>
+
+        {results && (
+          <button onClick={() => window.print()} style={{ position: 'absolute', right: 0, top: '20px', background: 'rgba(51,65,85,0.3)', border: '1px solid rgba(51,65,85,0.6)', padding: '10px 20px', borderRadius: '12px', color: '#e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Export PDF Tearsheet
+          </button>
+        )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '30px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '30px', alignItems: 'start' }} className="layout-grid">
         
         {/* LEFT COLUMN: SETUP */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }} className="hide-on-print">
           
           <div style={{ background: 'linear-gradient(145deg, rgba(15,23,42,0.8) 0%, rgba(2,6,23,0.9) 100%)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)' }}>
             <h3 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -202,6 +229,13 @@ export default function Simulator() {
               <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Total Invested</span>
               <strong style={{ color: '#38bdf8', fontSize: '1.4rem' }}>₹{currentPortfolioValue.toLocaleString('en-IN')}</strong>
             </div>
+
+            {results && results.metrics.optimalWeights && (
+              <button onClick={applyOptimalWeights} style={{ width: '100%', marginTop: '15px', padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }} className="optimize-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Apply Optimal Weights (Max Sharpe)
+              </button>
+            )}
           </div>
 
           <div style={{ background: 'linear-gradient(145deg, rgba(15,23,42,0.8) 0%, rgba(2,6,23,0.9) 100%)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)' }}>
@@ -250,7 +284,7 @@ export default function Simulator() {
         </div>
 
         {/* RIGHT COLUMN: RESULTS */}
-        <div>
+        <div className="print-full-width">
           {isAnalyzing && !results && (
             <div style={{ background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(20px)', padding: '50px 40px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '600px', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)' }}>
               <div style={{ position: 'relative', width: '80px', height: '80px', marginBottom: '30px' }}>
@@ -269,7 +303,7 @@ export default function Simulator() {
           {results && m && ai && (
             <div style={{ animation: 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column', gap: '25px' }}>
               
-              <div style={{ background: 'linear-gradient(145deg, rgba(15,23,42,0.8) 0%, rgba(2,6,23,0.9) 100%)', backdropFilter: 'blur(20px)', padding: '40px', borderRadius: '24px', border: '1px solid rgba(56,189,248,0.2)', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ background: 'linear-gradient(145deg, rgba(15,23,42,0.8) 0%, rgba(2,6,23,0.9) 100%)', backdropFilter: 'blur(20px)', padding: '40px', borderRadius: '24px', border: '1px solid rgba(56,189,248,0.2)', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.5)', position: 'relative', overflow: 'hidden' }} className="print-border-visible">
                 <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(56,189,248,0.15) 0%, rgba(0,0,0,0) 70%)', borderRadius: '50%', pointerEvents: 'none' }}></div>
                 
                 <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -281,60 +315,73 @@ export default function Simulator() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-                  <MetricCard title="Real CAGR" value={`${(m.realCAGR * 100).toFixed(2)}%`} highlight={m.realCAGR > 0} sub="CAPM Derived" />
+                  <MetricCard title="Real CAGR" value={`${(m.realCAGR * 100).toFixed(2)}%`} highlight={m.realCAGR > 0} sub={m.hasDividends ? "Includes Dividends" : "CAPM Derived"} />
                   <MetricCard title="Sharpe Ratio" value={m.sharpeRatio.toFixed(2)} highlight={m.sharpeRatio > 1} sub="Risk-adjusted Return" />
                   <MetricCard title="Sortino Ratio" value={m.sortino.toFixed(2)} highlight={m.sortino > 1.5} sub="Downside Protection" />
                   <MetricCard title="Vol (σ_annual)" value={`${(m.portVolAnnual * 100).toFixed(1)}%`} highlight={false} sub="Portfolio Volatility" color="#f59e0b" />
                 </div>
               </div>
 
-              {/* RISK & DISTRIBUTION GRID */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
-                
-                {/* RISK PANEL */}
-                <div style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}>
-                  <h4 style={{ margin: '0 0 25px 0', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '1.1rem' }}>Risk Exposure</span>
-                    <span style={{ fontSize: '0.8rem', padding: '4px 10px', borderRadius: '20px', background: m.riskScore > 70 ? 'rgba(239,68,68,0.15)' : m.riskScore > 40 ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)', color: m.riskScore > 70 ? '#ef4444' : m.riskScore > 40 ? '#f59e0b' : '#22c55e', border: `1px solid ${m.riskScore > 70 ? 'rgba(239,68,68,0.3)' : m.riskScore > 40 ? 'rgba(245,158,11,0.3)' : 'rgba(34,197,94,0.3)'}` }}>
-                      {m.riskLevel} ({m.riskScore}/100)
-                    </span>
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                    <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
-                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>VaR (95%) <span title="Value at Risk: The maximum expected loss with 95% confidence." style={{cursor: 'help', color: '#38bdf8'}}>ⓘ</span></div>
-                      <div style={{ fontSize: '1.25rem', color: '#ef4444', fontWeight: 'bold' }}>-₹{m.VaR_95.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
-                    </div>
-                    <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
-                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>CVaR (95%) <span title="Conditional VaR / Expected Shortfall: The average loss of the worst 5% of paths." style={{cursor: 'help', color: '#38bdf8'}}>ⓘ</span></div>
-                      <div style={{ fontSize: '1.25rem', color: '#ef4444', fontWeight: 'bold' }}>-₹{m.CVaR_95.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
-                    </div>
-                    <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(51,65,85,0.5)' }}>
-                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>HHI (Concentration)</div>
-                      <div style={{ fontSize: '1.25rem', color: '#fff' }}>{m.HHI.toFixed(2)}</div>
-                    </div>
-                    <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(51,65,85,0.5)' }}>
-                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>Macro Vol (VIX)</div>
-                      <div style={{ fontSize: '1.25rem', color: '#fff' }}>{m.macro.VIX.toFixed(2)}</div>
-                    </div>
+              {/* SECTOR & GEO HEATMAP */}
+              <div style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }} className="print-border-visible">
+                <h4 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '1.1rem' }}>Diversification Heatmap</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                  <div>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '10px' }}>Geographic Exposure</div>
+                    <HeatmapBar data={m.assets} groupKey="geo" colors={['#38bdf8', '#8b5cf6', '#ec4899']} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '10px' }}>Sector Exposure</div>
+                    <HeatmapBar data={m.assets} groupKey="sector" colors={['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6']} />
                   </div>
                 </div>
+              </div>
 
-                {/* DISTRIBUTION CURVE */}
-                <div style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}>
-                  <h4 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '1.1rem' }}>Monte Carlo 10k Paths</h4>
-                  <div style={{ width: '100%', height: '180px', position: 'relative' }}>
-                    <DistributionChart points={m.distributionPoints} p5={m.p5} p50={m.p50} p90={m.p90} />
+              {/* INTERACTIVE TRAJECTORY PATH */}
+              {m.trajectoryPath && m.trajectoryPath.length > 0 && (
+                <div style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }} className="print-border-visible print-page-break">
+                  <h4 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '1.1rem' }}>Monte Carlo Trajectory (Wealth Over Time)</h4>
+                  <div style={{ width: '100%', height: '250px', position: 'relative' }}>
+                    <TrajectoryChart pathData={m.trajectoryPath} startValue={currentPortfolioValue} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', fontSize: '0.8rem' }}>
-                    <div style={{ color: '#ef4444' }}>Bear (p5)<br/><strong style={{fontSize: '0.9rem'}}>₹{m.p5.toLocaleString('en-IN',{maximumFractionDigits:0})}</strong></div>
-                    <div style={{ color: '#38bdf8', textAlign: 'center' }}>Median<br/><strong style={{fontSize: '0.9rem'}}>₹{m.p50.toLocaleString('en-IN',{maximumFractionDigits:0})}</strong></div>
-                    <div style={{ color: '#22c55e', textAlign: 'right' }}>Bull (p90)<br/><strong style={{fontSize: '0.9rem'}}>₹{m.p90.toLocaleString('en-IN',{maximumFractionDigits:0})}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '15px', fontSize: '0.8rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{width:'10px', height:'3px', background:'#22c55e'}}></div> Bull (p90)</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{width:'10px', height:'3px', background:'#38bdf8'}}></div> Median (p50)</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{width:'10px', height:'3px', background:'#ef4444'}}></div> Bear (p5)</div>
+                  </div>
+                </div>
+              )}
+
+              {/* RISK PANEL */}
+              <div style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }} className="print-border-visible">
+                <h4 style={{ margin: '0 0 25px 0', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '1.1rem' }}>Risk Exposure & Tails</span>
+                  <span style={{ fontSize: '0.8rem', padding: '4px 10px', borderRadius: '20px', background: m.riskScore > 70 ? 'rgba(239,68,68,0.15)' : m.riskScore > 40 ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)', color: m.riskScore > 70 ? '#ef4444' : m.riskScore > 40 ? '#f59e0b' : '#22c55e', border: `1px solid ${m.riskScore > 70 ? 'rgba(239,68,68,0.3)' : m.riskScore > 40 ? 'rgba(245,158,11,0.3)' : 'rgba(34,197,94,0.3)'}` }}>
+                    {m.riskLevel} ({m.riskScore}/100)
+                  </span>
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px' }}>
+                  <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>VaR (95%)</div>
+                    <div style={{ fontSize: '1.1rem', color: '#ef4444', fontWeight: 'bold' }}>-₹{m.VaR_95.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+                  </div>
+                  <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>CVaR (95%)</div>
+                    <div style={{ fontSize: '1.1rem', color: '#ef4444', fontWeight: 'bold' }}>-₹{m.CVaR_95.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+                  </div>
+                  <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(51,65,85,0.5)' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>Concentration (HHI)</div>
+                    <div style={{ fontSize: '1.1rem', color: '#fff' }}>{m.HHI.toFixed(2)}</div>
+                  </div>
+                  <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(51,65,85,0.5)' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>Macro Vol (VIX)</div>
+                    <div style={{ fontSize: '1.1rem', color: '#fff' }}>{m.macro.VIX.toFixed(2)}</div>
                   </div>
                 </div>
               </div>
 
               {/* AI INTELLIGENCE */}
-              <div style={{ background: 'linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(30,58,138,0.3) 100%)', backdropFilter: 'blur(20px)', padding: '35px', borderRadius: '24px', border: '1px solid rgba(59,130,246,0.3)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ background: 'linear-gradient(145deg, rgba(15,23,42,0.9) 0%, rgba(30,58,138,0.3) 100%)', backdropFilter: 'blur(20px)', padding: '35px', borderRadius: '24px', border: '1px solid rgba(59,130,246,0.3)', position: 'relative', overflow: 'hidden' }} className="print-border-visible">
                 <div style={{ position: 'absolute', top: '0', left: '0', right: '0', height: '3px', background: 'linear-gradient(90deg, #38bdf8, #8b5cf6, #ec4899)' }}></div>
                 <h4 style={{ margin: '0 0 20px 0', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.2rem' }}>
                   <span style={{ fontSize: '1.5rem' }}>🧠</span> AI Chief Investment Officer
@@ -374,20 +421,6 @@ export default function Simulator() {
                 </div>
               </div>
 
-              {/* STRESS TESTS */}
-              <div style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}>
-                <h4 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '1.1rem' }}>Deterministic Stress Tests</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {m.stressTests.map((st, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(2,6,23,0.5)', padding: '16px 20px', borderRadius: '12px', border: '1px solid rgba(51,65,85,0.3)' }}>
-                      <div style={{ fontWeight: '500', color: '#fff', width: '250px', fontSize: '0.95rem' }}>{st.name}</div>
-                      <div style={{ color: '#ef4444', fontWeight: 'bold', width: '100px', fontSize: '1.1rem' }}>-{(st.dropPct * 100).toFixed(1)}%</div>
-                      <div style={{ color: '#cbd5e1', fontSize: '1rem' }}>-₹{st.dropVal.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
             </div>
           )}
         </div>
@@ -401,6 +434,17 @@ export default function Simulator() {
         .delete-btn:hover { background: rgba(239, 68, 68, 0.2) !important; }
         .run-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 15px 25px -5px rgba(139, 92, 246, 0.5) !important; }
         .run-btn:active:not(:disabled) { transform: translateY(1px); }
+        .optimize-btn:hover { background: rgba(16, 185, 129, 0.2) !important; transform: translateY(-1px); }
+        
+        @media print {
+          body { background: #0f172a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .hide-on-print { display: none !important; }
+          .layout-grid { display: block !important; }
+          .print-full-width { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+          .simulator-container { padding: 0 !important; }
+          .print-border-visible { border: 1px solid #334155 !important; margin-bottom: 20px !important; page-break-inside: avoid; }
+          .print-page-break { page-break-before: always; }
+        }
       `}} />
     </div>
   );
@@ -417,58 +461,88 @@ function MetricCard({ title, value, highlight, sub, color }) {
   );
 }
 
-// Very simple SVG Distribution Curve renderer
-function DistributionChart({ points, p5, p50, p90 }) {
-  if (!points || points.length === 0) return null;
-  
-  const bins = 40;
-  const min = points[0];
-  const max = points[points.length - 1];
-  const range = max - min;
-  const binWidth = range / bins;
-  
-  let histogram = Array(bins).fill(0);
-  points.forEach(p => {
-    let b = Math.floor((p - min) / binWidth);
-    if (b >= bins) b = bins - 1;
-    histogram[b]++;
+function HeatmapBar({ data, groupKey, colors }) {
+  if (!data) return null;
+  const groups = {};
+  data.forEach(a => {
+    const k = a[groupKey] || 'Other';
+    if(!groups[k]) groups[k] = 0;
+    groups[k] += a.weight;
   });
+  
+  const entries = Object.entries(groups).sort((a,b) => b[1] - a[1]);
+  
+  return (
+    <div>
+      <div style={{ display: 'flex', width: '100%', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '15px' }}>
+        {entries.map(([k, w], i) => (
+          <div key={k} style={{ width: \`\${w * 100}%\`, background: colors[i % colors.length], transition: 'width 0.5s ease' }} title={\`\${k}: \${(w*100).toFixed(1)}%\`}></div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+        {entries.map(([k, w], i) => (
+          <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#cbd5e1' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: colors[i % colors.length] }}></span>
+            {k} ({(w*100).toFixed(1)}%)
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-  const maxCount = Math.max(...histogram);
-  const height = 180;
+function TrajectoryChart({ pathData, startValue }) {
+  if (!pathData || pathData.length === 0) return null;
+  
   const width = 1000;
-
-  let pathD = `M 0 ${height}`;
-  histogram.forEach((count, i) => {
-    const x = (i / bins) * width;
-    const y = height - ((count / maxCount) * height * 0.9);
-    pathD += ` L ${x} ${y}`;
+  const height = 250;
+  
+  const years = pathData.map(d => d.year);
+  const maxYear = Math.max(...years);
+  
+  let minVal = startValue;
+  let maxVal = startValue;
+  pathData.forEach(d => {
+    if(d.p5 < minVal) minVal = d.p5;
+    if(d.p90 > maxVal) maxVal = d.p90;
   });
-  pathD += ` L ${width} ${height} Z`;
+  
+  // Pad the Y axis a bit
+  const range = maxVal - minVal || 1;
+  minVal = Math.max(0, minVal - range * 0.1);
+  maxVal = maxVal + range * 0.1;
+  
+  const getX = (year) => (year / maxYear) * width;
+  const getY = (val) => height - ((val - minVal) / (maxVal - minVal)) * height;
 
-  const getX = (val) => ((val - min) / range) * width;
-  const x5 = getX(p5);
-  const x50 = getX(p50);
-  const x90 = getX(p90);
+  let d5 = \`M \${getX(pathData[0].year)} \${getY(pathData[0].p5)}\`;
+  let d50 = \`M \${getX(pathData[0].year)} \${getY(pathData[0].p50)}\`;
+  let d90 = \`M \${getX(pathData[0].year)} \${getY(pathData[0].p90)}\`;
+
+  pathData.forEach((d, i) => {
+    if (i === 0) return;
+    d5 += \` L \${getX(d.year)} \${getY(d.p5)}\`;
+    d50 += \` L \${getX(d.year)} \${getY(d.p50)}\`;
+    d90 += \` L \${getX(d.year)} \${getY(d.p90)}\`;
+  });
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%', preserveAspectRatio: 'none', overflow: 'visible' }}>
-      <defs>
-        <linearGradient id="distGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={pathD} fill="url(#distGrad)" stroke="#38bdf8" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+    <svg viewBox={\`0 0 \${width} \${height}\`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+      {/* Grid lines */}
+      <line x1="0" y1={getY(startValue)} x2={width} y2={getY(startValue)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4,4" />
       
-      {/* P5 Line */}
-      <line x1={x5} y1={0} x2={x5} y2={height} stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" vectorEffect="non-scaling-stroke" />
+      {/* Area fill between p5 and p90 */}
+      <path d={\`\${d90} \${pathData.slice().reverse().map(d => \`L \${getX(d.year)} \${getY(d.p5)}\`).join(' ')} Z\`} fill="rgba(56, 189, 248, 0.05)" />
       
-      {/* P50 Line */}
-      <line x1={x50} y1={0} x2={x50} y2={height} stroke="#38bdf8" strokeWidth="2" strokeDasharray="6,4" vectorEffect="non-scaling-stroke" />
+      {/* Lines */}
+      <path d={d5} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" vectorEffect="non-scaling-stroke" />
+      <path d={d50} fill="none" stroke="#38bdf8" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+      <path d={d90} fill="none" stroke="#22c55e" strokeWidth="2" strokeDasharray="6,4" vectorEffect="non-scaling-stroke" />
       
-      {/* P90 Line */}
-      <line x1={x90} y1={0} x2={x90} y2={height} stroke="#22c55e" strokeWidth="2" strokeDasharray="6,4" vectorEffect="non-scaling-stroke" />
+      {/* End point dots */}
+      <circle cx={width} cy={getY(pathData[pathData.length-1].p90)} r="4" fill="#22c55e" />
+      <circle cx={width} cy={getY(pathData[pathData.length-1].p50)} r="5" fill="#38bdf8" />
+      <circle cx={width} cy={getY(pathData[pathData.length-1].p5)} r="4" fill="#ef4444" />
     </svg>
   );
 }
