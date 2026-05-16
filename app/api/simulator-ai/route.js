@@ -3,7 +3,6 @@ import YahooFinance from 'yahoo-finance2';
 import * as math from 'mathjs';
 import { jStat } from 'jstat';
 
-// Cache for Yahoo data
 const cache = new Map();
 const CACHE_TTL = 10 * 60 * 1000;
 
@@ -31,7 +30,6 @@ export async function POST(request) {
   }
 
   try {
-    // 1. MACRO FETCH
     let macro = getCached('MACRO');
     if (!macro) {
       const macroSymbols = ['^VIX', '^TNX', 'USDINR=X', '^INBMK', 'GC=F', '^NSEI', '^GSPC'];
@@ -52,35 +50,40 @@ export async function POST(request) {
     const USDINR = macro['USDINR=X'] || 83.5;
     const IN10Y = macro['^INBMK'] || 7.1;
 
-    const riskFreeRateAnnual = US10Y / 100;
-    const riskFreeRateMonthly = Math.pow(1 + riskFreeRateAnnual, 1/12) - 1;
-    const equityRiskPremium = 0.055; // 5.5% ERP
+    // Use Indian 10Y if all assets are Indian, otherwise US 10Y
+    const isAllIndian = portfolio.every(p => p.symbol.endsWith('.NS') || p.symbol.endsWith('.BO') || p.symbol === '^NSEI');
+    const riskFreeRateAnnual = (isAllIndian ? IN10Y : US10Y) / 100;
+    const equityRiskPremium = 0.055; 
 
-    // Convert period to years
     let T_years = periodValue || 1;
     if (periodUnit === 'Months') T_years = periodValue / 12;
     if (periodUnit === 'Weeks') T_years = periodValue / 52;
     if (periodUnit === 'Days') T_years = periodValue / 365;
     const T_steps = Math.max(Math.round(T_years * 12), 1);
 
+    const tenYearsAgo = new Date();
+    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+    const period10Yr = tenYearsAgo.toISOString().split('T')[0];
+
     const fiveYearsAgo = new Date();
     fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
-    const period1 = fiveYearsAgo.toISOString().split('T')[0];
+    const period5Yr = fiveYearsAgo.toISOString().split('T')[0];
 
-    // Nifty & SPX baselines for Beta
     let benchmarks = getCached('BENCHMARKS');
     if (!benchmarks) {
       benchmarks = {};
       try {
-        const [niftyHist, spxHist] = await Promise.all([
-          YahooFinance.historical('^NSEI', { period1, interval: '1mo' }).catch(() => []),
-          YahooFinance.historical('^GSPC', { period1, interval: '1mo' }).catch(() => [])
+        const [niftyHist, spxHist, goldHist] = await Promise.all([
+          YahooFinance.historical('^NSEI', { period1: period10Yr, interval: '1mo' }).catch(() => []),
+          YahooFinance.historical('^GSPC', { period1: period5Yr, interval: '1mo' }).catch(() => []),
+          YahooFinance.historical('GC=F', { period1: period5Yr, interval: '1mo' }).catch(() => [])
         ]);
         benchmarks.nifty = niftyHist.map(h => h.close).filter(Boolean);
         benchmarks.spx = spxHist.map(h => h.close).filter(Boolean);
+        benchmarks.gold = goldHist.map(h => h.close).filter(Boolean);
         setCache('BENCHMARKS', benchmarks);
       } catch (e) {
-        benchmarks = { nifty: [], spx: [] };
+        benchmarks = { nifty: [], spx: [], gold: [] };
       }
     }
 
@@ -94,20 +97,24 @@ export async function POST(request) {
 
     const niftyReturns = getReturns(benchmarks.nifty);
     const spxReturns = getReturns(benchmarks.spx);
+    const goldReturns = getReturns(benchmarks.gold);
 
-    // 2. FETCH INDIVIDUAL ASSET DATA
     const assetData = [];
     await Promise.all(portfolio.map(async (p) => {
       const cacheKey = `ASSET_${p.symbol}`;
       let data = getCached(cacheKey);
       
+      const isIndian = p.symbol.endsWith('.NS') || p.symbol.endsWith('.BO') || p.symbol === '^NSEI';
+      const isMetal = p.symbol.includes('=F');
+      const fetchPeriod = isIndian ? period10Yr : period5Yr;
+
       if (!data) {
         let quote = null;
         let hist = [];
         try {
           [quote, hist] = await Promise.all([
             YahooFinance.quote(p.symbol).catch(() => null),
-            YahooFinance.historical(p.symbol, { period1, interval: '1mo' }).catch(() => [])
+            YahooFinance.historical(p.symbol, { period1: fetchPeriod, interval: '1mo' }).catch(() => [])
           ]);
         } catch (e) {}
         
@@ -126,12 +133,13 @@ export async function POST(request) {
       if (rets.length > 0) {
         stdDevMonthly = math.std(rets);
       } else {
-        stdDevMonthly = 0.20 / Math.sqrt(12); // Fallback volatility
+        stdDevMonthly = 0.20 / Math.sqrt(12);
       }
       const stdDevAnnual = stdDevMonthly * Math.sqrt(12);
       
-      const isIndian = p.symbol.endsWith('.NS') || p.symbol.endsWith('.BO') || p.symbol === '^NSEI';
-      const benchRets = isIndian ? niftyReturns : spxReturns;
+      let benchRets = spxReturns;
+      if (isIndian) benchRets = niftyReturns;
+      else if (isMetal) benchRets = goldReturns;
       
       let beta = q.beta || 1.0;
       if (rets.length > 0 && benchRets.length > 0) {
@@ -145,16 +153,14 @@ export async function POST(request) {
         }
       }
 
-      // CAPM Expected Return (Annualized -> Monthly)
       const expectedReturnAnnual = riskFreeRateAnnual + beta * equityRiskPremium;
       const expectedReturnMonthly = Math.pow(1 + expectedReturnAnnual, 1/12) - 1;
 
-      // Friction / Liquidity Risk Penalty
       let liquidityPenalty = 0;
       if (q.averageVolume && q.marketCap) {
         const dailyTradedValue = q.averageVolume * price;
         const turnoverRatio = dailyTradedValue / q.marketCap;
-        if (turnoverRatio < 0.001) liquidityPenalty = 0.02; // Illiquid penalty
+        if (turnoverRatio < 0.001) liquidityPenalty = 0.02;
       }
 
       assetData.push({
@@ -162,7 +168,7 @@ export async function POST(request) {
         name: p.name,
         type: p.type,
         weight,
-        targetWeight: weight, // Used for rebalancing
+        targetWeight: weight,
         pe: q.trailingPE || 'N/A',
         beta,
         stdDevMonthly,
@@ -174,11 +180,11 @@ export async function POST(request) {
       });
     }));
 
-    // 3. COVARIANCE MATRIX & CHOLESKY
     const N = assetData.length;
     let covMat = Array(N).fill(0).map(() => Array(N).fill(0));
     let corMat = Array(N).fill(0).map(() => Array(N).fill(0));
     
+    // Intersection for correlation matrix (e.g. 5 yrs if mixed, 10 yrs if all Indian)
     const minLen = Math.min(...assetData.map(a => a.returns.length));
     if (minLen > 2) {
       for (let i = 0; i < N; i++) {
@@ -199,7 +205,6 @@ export async function POST(request) {
       }
     }
 
-    // Cholesky with Regularization
     const buildCholesky = (covarianceMatrix) => {
       const regCov = covarianceMatrix.map((row, i) => row.map((val, j) => i === j ? val + 1e-6 : val));
       let L = Array(N).fill(0).map(() => Array(N).fill(0));
@@ -221,7 +226,6 @@ export async function POST(request) {
 
     const L_normal = buildCholesky(covMat);
 
-    // Crisis Correlation Matrix (all pairwise corr = 0.85)
     let crisisCovMat = Array(N).fill(0).map(() => Array(N).fill(0));
     for (let i = 0; i < N; i++) {
       for (let j = 0; j < N; j++) {
@@ -234,7 +238,6 @@ export async function POST(request) {
     }
     const L_crisis = buildCholesky(crisisCovMat);
 
-    // Portfolio Volatility
     let portVar = 0;
     for(let i=0; i<N; i++) {
       for(let j=0; j<N; j++) {
@@ -243,12 +246,9 @@ export async function POST(request) {
     }
     const portVolAnnual = Math.sqrt(Math.max(portVar, 0.0001));
 
-    // 4. MONTE CARLO (10k paths) - Student t-distribution (df=5)
     const M_PATHS = 10000;
     const terminalValues = new Float32Array(M_PATHS);
     const crisisTerminalValues = new Float32Array(M_PATHS);
-    
-    // Scale factor for t-dist (since var of t(5) is 5/3, we divide by sqrt(5/3) to get variance 1)
     const tDistScale = Math.sqrt(3 / 5);
 
     for(let p = 0; p < M_PATHS; p++) {
@@ -257,7 +257,6 @@ export async function POST(request) {
       let currentWeights = assetData.map(a => a.weight);
       
       for(let t = 0; t < T_steps; t++) {
-        // Rebalance annually
         if (t > 0 && t % 12 === 0) {
           currentWeights = assetData.map(a => a.targetWeight);
         }
@@ -284,9 +283,6 @@ export async function POST(request) {
         
         currentVal *= (1 + portRetMonth);
         crisisVal *= (1 + crisisRetMonth);
-        
-        // Drift weights (they grow proportional to returns, approximated here)
-        // For accurate tracking, we'd update currentWeights based on individual returns.
       }
       terminalValues[p] = currentVal;
       crisisTerminalValues[p] = crisisVal;
@@ -303,7 +299,6 @@ export async function POST(request) {
     const VaR_95 = Math.max(totalInvested - p5, 0);
     const crisisVaR_95 = Math.max(totalInvested - crisisTerminalValues[Math.floor(0.05 * M_PATHS)], 0);
     
-    // CVaR_95 (Expected Shortfall)
     let tailSum = 0, tailCount = 0;
     for(let i=0; i<Math.floor(0.05 * M_PATHS); i++) {
       tailSum += terminalValues[i];
@@ -311,10 +306,8 @@ export async function POST(request) {
     }
     const CVaR_95 = Math.max(totalInvested - (tailSum / tailCount), 0);
 
-    // HHI
     const HHI = assetData.reduce((sum, a) => sum + Math.pow(a.weight, 2), 0);
     
-    // Max pairwise corr
     let maxCorr = 0;
     for(let i=0; i<N; i++) {
       for(let j=i+1; j<N; j++) {
@@ -322,7 +315,6 @@ export async function POST(request) {
       }
     }
 
-    // Risk Score 0-100
     const nVol = Math.min(portVolAnnual / 0.40, 1) * 30;
     const nVix = Math.min(VIX / 40, 1) * 20;
     const nHHI = Math.min(HHI / 1.0, 1) * 25;
@@ -336,9 +328,9 @@ export async function POST(request) {
     if(riskScore > 50) riskLevel = 'High';
     if(riskScore > 70) riskLevel = 'Very High';
 
-    // CAGR & Ratios
     let projectedCAGR = Math.pow(p50 / totalInvested, 1 / T_years) - 1;
-    let realCAGR = includeInflation ? ((1 + projectedCAGR) / (1 + (inflationRate/100))) - 1 : projectedCAGR;
+    let inflationVal = Number(inflationRate) || 0;
+    let realCAGR = includeInflation ? ((1 + projectedCAGR) / (1 + (inflationVal/100))) - 1 : projectedCAGR;
     let estimatedValueReal = includeInflation ? totalInvested * Math.pow(1 + realCAGR, T_years) : p50;
 
     const sharpeRatio = (projectedCAGR - riskFreeRateAnnual) / portVolAnnual;
@@ -352,14 +344,12 @@ export async function POST(request) {
     if (stdDownside === 0) stdDownside = 0.001;
     let sortino = (projectedCAGR - riskFreeRateAnnual) / stdDownside;
 
-    // Stress Testing Overlays
     const stressTests = [
       { name: "2008 Financial Crisis", dropPct: 0.55, dropVal: totalInvested * 0.55 },
       { name: "2020 Covid Crash", dropPct: 0.35, dropVal: totalInvested * 0.35 },
       { name: "Crisis Correlation (r=0.85)", dropPct: crisisVaR_95 / totalInvested, dropVal: crisisVaR_95 }
     ];
 
-    // Payload points to draw the SVG Distribution Curve
     const distributionPoints = [];
     const step = Math.floor(M_PATHS / 50);
     for (let i = 0; i < M_PATHS; i += step) {
@@ -373,7 +363,6 @@ export async function POST(request) {
       macro: { VIX, US10Y, USDINR, riskFreeRateAnnual }
     };
 
-    // 5. LAYER 2 - AI ENGINE
     const groqApiKey = process.env.GROQ_API_KEY;
     if (!groqApiKey) return generateFallback(metricsPayload, totalInvested);
 

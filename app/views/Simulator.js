@@ -222,16 +222,21 @@ export default function Simulator() {
               </div>
             </div>
             
-            <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', background: 'rgba(51,65,85,0.2)', borderRadius: '10px', border: '1px solid rgba(51,65,85,0.4)' }}>
-              <div style={{ position: 'relative', width: '40px', height: '22px', background: includeInflation ? '#38bdf8' : 'rgba(51,65,85,0.8)', borderRadius: '11px', transition: 'background 0.3s' }}>
-                <div style={{ position: 'absolute', top: '2px', left: includeInflation ? '20px' : '2px', width: '18px', height: '18px', background: '#fff', borderRadius: '50%', transition: 'left 0.3s' }}></div>
-              </div>
-              <input type="checkbox" checked={includeInflation} onChange={e => {setIncludeInflation(e.target.checked); setResults(null);}} style={{ display: 'none' }} />
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(51,65,85,0.2)', borderRadius: '10px', border: '1px solid rgba(51,65,85,0.4)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                <div style={{ position: 'relative', width: '40px', height: '22px', background: includeInflation ? '#38bdf8' : 'rgba(51,65,85,0.8)', borderRadius: '11px', transition: 'background 0.3s' }}>
+                  <div style={{ position: 'absolute', top: '2px', left: includeInflation ? '20px' : '2px', width: '18px', height: '18px', background: '#fff', borderRadius: '50%', transition: 'left 0.3s' }}></div>
+                </div>
+                <input type="checkbox" checked={includeInflation} onChange={e => {setIncludeInflation(e.target.checked); setResults(null);}} style={{ display: 'none' }} />
                 <span style={{ fontSize: '0.9rem', color: '#f8fafc' }}>Adjust for Inflation</span>
-                <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Currently assumed at {inflationRate}% p.a.</span>
-              </div>
-            </label>
+              </label>
+              {includeInflation && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <input type="number" step="0.1" value={inflationRate} onChange={e => {setInflationRate(e.target.value); setResults(null);}} style={{ width: '60px', background: 'rgba(15,23,42,0.8)', border: '1px solid rgba(56,189,248,0.3)', color: '#38bdf8', borderRadius: '6px', padding: '4px', textAlign: 'center', fontSize: '0.9rem', outline: 'none' }} />
+                  <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>% p.a.</span>
+                </div>
+              )}
+            </div>
 
             <button onClick={runAnalysis} disabled={isAnalyzing || portfolio.length === 0} style={{ width: '100%', padding: '16px', marginTop: '30px', background: isAnalyzing ? 'rgba(51,65,85,0.5)' : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 'bold', cursor: isAnalyzing ? 'not-allowed' : 'pointer', boxShadow: isAnalyzing ? 'none' : '0 10px 20px -5px rgba(139, 92, 246, 0.4)', transition: 'all 0.3s ease', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }} className="run-btn">
               {isAnalyzing ? (
