@@ -54,14 +54,14 @@ async function sendAlertEmail(email, name, symbol, targetPrice, currentPrice, di
 }
 
 export async function GET(request) {
+  const debug = [];
   try {
-    // 1. Fetch all users
     const users = await prisma.user.findMany();
+    debug.push(`Found ${users.length} users`);
     
     let symbolsToFetch = new Set();
     let userAlertsMap = [];
 
-    // 2. Collect all active stock alerts
     for (const user of users) {
       let alerts = [];
       if (user.alerts && Array.isArray(user.alerts)) {
@@ -74,30 +74,30 @@ export async function GET(request) {
       if (activeAlerts.length > 0) {
         activeAlerts.forEach(a => symbolsToFetch.add(a.symbol));
         userAlertsMap.push({ user, allAlerts: alerts, activeAlerts });
+        debug.push(`User ${user.email} has ${activeAlerts.length} active alerts`);
       }
     }
 
     if (symbolsToFetch.size === 0) {
-      return NextResponse.json({ success: true, message: 'No active alerts to process' });
+      return NextResponse.json({ success: true, message: 'No active alerts to process', debug });
     }
 
-    // 3. Fetch live prices
     const prices = {};
     const symbolsArray = Array.from(symbolsToFetch);
+    debug.push(`Fetching prices for: ${symbolsArray.join(',')}`);
     
-    // Batch fetch from yahoo finance
     for (const sym of symbolsArray) {
       try {
         const result = await yahooFinance.quote(sym);
         if (result && result.regularMarketPrice) {
           prices[sym] = result.regularMarketPrice;
+          debug.push(`Price for ${sym}: ${prices[sym]}`);
         }
       } catch (err) {
-        console.error(`[Cron] Failed to fetch price for ${sym}`);
+        debug.push(`Failed to fetch ${sym}: ${err.message}`);
       }
     }
 
-    // 4. Evaluate conditions & send emails
     let emailsSent = 0;
 
     for (const userEntry of userAlertsMap) {
@@ -106,17 +106,21 @@ export async function GET(request) {
 
       for (const alert of activeAlerts) {
         const currentPrice = prices[alert.symbol];
-        if (!currentPrice) continue;
+        if (!currentPrice) {
+          debug.push(`No price found for ${alert.symbol}`);
+          continue;
+        }
 
         const conditionMet = (alert.direction === 'above' && currentPrice >= alert.targetPrice) ||
                              (alert.direction === 'below' && currentPrice <= alert.targetPrice);
 
+        debug.push(`Evaluating ${alert.symbol} for ${user.email}: current=${currentPrice}, target=${alert.targetPrice}, dir=${alert.direction}, met=${conditionMet}`);
+
         if (conditionMet) {
-          // Send Email
           const sent = await sendAlertEmail(user.email, user.name, alert.symbol, alert.targetPrice, currentPrice, alert.direction);
+          debug.push(`Email sent result for ${user.email}: ${sent}`);
           if (sent) {
             emailsSent++;
-            // Mark alert as inactive
             const alertIndex = allAlerts.findIndex(a => a.id === alert.id);
             if (alertIndex > -1) {
               allAlerts[alertIndex].active = false;
@@ -126,18 +130,19 @@ export async function GET(request) {
         }
       }
 
-      // 5. Update user alerts in DB if any were triggered
       if (userUpdated) {
         await prisma.user.update({
           where: { id: user.id },
           data: { alerts: allAlerts }
         });
+        debug.push(`Updated DB for ${user.email}`);
       }
     }
 
-    return NextResponse.json({ success: true, message: `Processed alerts. Emails sent: ${emailsSent}` });
+    return NextResponse.json({ success: true, message: `Processed alerts. Emails sent: ${emailsSent}`, debug });
   } catch (error) {
-    console.error('[Cron Job Error]', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    debug.push(`Fatal Error: ${error.message}`);
+    return NextResponse.json({ error: 'Internal server error', debug }, { status: 500 });
   }
 }
+
