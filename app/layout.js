@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'InvestIQ — Financial Intelligence Dashboard',
+  title: 'InvestIQ AI — Financial Intelligence Dashboard',
   description: 'Real-time stock market data, sector analysis, trend insights, and investment tools for BSE, NSE, and US exchanges.',
 };
 

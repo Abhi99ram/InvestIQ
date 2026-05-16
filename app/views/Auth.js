@@ -158,7 +158,7 @@ export default function Auth({ onLogin }) {
             {mode === 'reset' && '🔒'}
           </div>
           <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, color: '#fff' }}>
-            {mode === 'login' && 'Login to InvestIQ'}
+            {mode === 'login' && 'Login to InvestIQ AI'}
             {mode === 'signup' && 'Create an Account'}
             {mode === 'forgot' && 'Reset Password'}
             {mode === 'otp' && 'Enter OTP'}

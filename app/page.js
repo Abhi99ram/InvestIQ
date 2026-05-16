@@ -6,10 +6,12 @@ import Companies from './views/Companies';
 import Watchlist from './views/Watchlist';
 import Analysis from './views/Analysis';
 import NewsFeed from './views/NewsFeed';
-import Auth from './views/Auth';
 import Admin from './views/Admin';
 import MyAccount from './views/MyAccount';
 import Support from './views/Support';
+import Simulator from './views/Simulator';
+import Learn from './views/Learn';
+import Auth from './views/Auth';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -18,6 +20,8 @@ const NAV_ITEMS = [
   { id: 'watchlist', label: 'Watchlist & Alerts', icon: '⭐' },
   { id: 'analysis', label: 'Analysis', icon: '📈' },
   { id: 'news', label: 'News & Updates', icon: '📰' },
+  { id: 'simulator', label: 'Simulator', icon: '🧮' },
+  { id: 'learn', label: 'Learn', icon: '📚' },
   { id: 'account', label: 'My Account', icon: '👤' },
   { id: 'support', label: 'Support', icon: '🎧' },
 ];
@@ -85,6 +89,8 @@ export default function Home() {
       case 'watchlist': return <Watchlist onSelectStock={selectStock} setNotifCount={setNotifCount} user={user} />;
       case 'analysis': return <Analysis selectedSymbol={selectedSymbol} onSelectStock={selectStock} />;
       case 'news': return <NewsFeed />;
+      case 'simulator': return <Simulator />;
+      case 'learn': return <Learn />;
       case 'account': return <MyAccount user={user} onUpdateUser={handleUpdateUser} onLogout={handleLogout} />;
       case 'support': return <Support />;
       default: return <Dashboard onSelectStock={selectStock} onSelectSector={viewSector} />;
@@ -97,7 +103,7 @@ export default function Home() {
         <div style={{ padding: '20px', width: '100%' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <div className="logo-icon" style={{ fontSize: '3rem' }}>📊</div>
-            <h1 style={{ fontSize: '2.5rem', color: 'var(--text-primary)' }}>InvestIQ</h1>
+            <h1 style={{ fontSize: '2.5rem', color: 'var(--text-primary)' }}>InvestIQ AI</h1>
             <p style={{ color: 'var(--text-muted)' }}>Financial Intelligence Dashboard</p>
           </div>
           <Auth onLogin={handleLogin} />
@@ -113,7 +119,7 @@ export default function Home() {
           <header className="header" style={{ justifyContent: 'space-between' }}>
             <div className="sidebar-logo">
               <div className="logo-icon">📊</div>
-              <h1 style={{ margin: 0 }}>InvestIQ Admin</h1>
+              <h1 style={{ margin: 0 }}>InvestIQ AI Admin</h1>
             </div>
             <button onClick={handleLogout} className="btn-secondary btn-sm">Logout</button>
           </header>
@@ -131,7 +137,7 @@ export default function Home() {
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <div className="logo-icon">📊</div>
-          <h1>InvestIQ</h1>
+          <h1>InvestIQ AI</h1>
         </div>
         <nav className="sidebar-nav">
           <div className="nav-section">
@@ -145,7 +151,7 @@ export default function Home() {
           </div>
         </nav>
         <div style={{padding:'16px 20px',borderTop:'1px solid var(--border-color)',fontSize:'0.75rem',color:'var(--text-muted)'}}>
-          InvestIQ v1.0<br/>Data via Yahoo Finance<br/>
+          InvestIQ AI v1.0<br/>Data via Yahoo Finance<br/>
           <span style={{color:'var(--accent-amber)'}}>⚠ Not financial advice</span>
         </div>
       </aside>

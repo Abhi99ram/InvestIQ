@@ -62,6 +62,7 @@ export async function PUT(request) {
 
       if (changesText.length > 0) {
         try {
+          // Notify Admin
           await transporter.sendMail({
             from: '"InvestIQ System" <' + gmailUser + '>',
             to: 'investiq.helpdesk@gmail.com',
@@ -69,7 +70,16 @@ export async function PUT(request) {
             text: `A user has updated their profile details:\n\nUser ID: ${updatedUser.id}\nOriginal Email: ${targetUser.email}\n\nChanges Made:\n${changesText.join('\n')}`,
             html: `<p>A user has updated their profile details:</p><ul><li>Original Email: ${targetUser.email}</li></ul><p><strong>Changes Made:</strong></p><ul>${changesText.map(c => `<li>${c}</li>`).join('')}</ul>`
           });
-        } catch (e) { console.error('Failed to notify admin of update', e); }
+          
+          // Notify User
+          await transporter.sendMail({
+            from: '"InvestIQ AI" <' + gmailUser + '>',
+            to: updatedUser.email,
+            subject: 'Your Profile Has Been Updated',
+            text: `Hi ${updatedUser.name || 'User'},\n\nYour profile details have been successfully updated.\n\nChanges Made:\n${changesText.join('\n')}\n\nIf you did not make these changes, please contact support immediately.\n\nInvestIQ AI Team`,
+            html: `<p>Hi ${updatedUser.name || 'User'},</p><p>Your profile details have been successfully updated.</p><p><strong>Changes Made:</strong></p><ul>${changesText.map(c => `<li>${c}</li>`).join('')}</ul><p>If you did not make these changes, please contact support immediately at investiq.helpdesk@gmail.com.</p><p>InvestIQ AI Team</p>`
+          });
+        } catch (e) { console.error('Failed to notify about update', e); }
       }
     }
 

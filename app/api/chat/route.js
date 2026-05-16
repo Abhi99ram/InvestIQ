@@ -68,7 +68,7 @@ Target Entry: ${contextData.targetEntry || 'N/A'} | Target Exit: ${contextData.t
 `;
   }
 
-  return `You are **Sentinel AI** — a world-class financial intelligence agent embedded in InvestIQ, India's premier market analytics platform. You think like a Goldman Sachs analyst combined with an RBI economist and a seasoned Indian equity trader.
+  return `You are **Sentinel AI** — a world-class financial intelligence agent embedded in InvestIQ AI, India's premier market analytics platform. You think like a Goldman Sachs analyst combined with an RBI economist and a seasoned Indian equity trader.
 
 ## Your Core Capabilities
 1. **Deep Market Analysis** — Explain Indian & global markets with real numbers, ratios, and cause-effect reasoning
