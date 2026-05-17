@@ -116,26 +116,38 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
       alert('Your browser does not support desktop notifications.');
       return;
     }
-    const permission = await Notification.requestPermission();
-    setNotifPermission(permission);
-    if (permission === 'granted') {
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(reg => {
-          reg.showNotification('🔔 InvestIQ Alerts Enabled!', {
-            body: 'You will now receive real-time updates, price alerts, and news digests instantly.',
-            icon: '/icon-192.png',
-            badge: '/icon-192.png',
-            vibrate: [100, 50, 100]
-          });
-        });
-      } else {
-        new Notification('🔔 InvestIQ Alerts Enabled!', {
-          body: 'You will now receive real-time updates, price alerts, and news digests instantly.',
-          icon: '/icon-192.png'
-        });
+
+    // Chrome for Android blocks notifications if clicked while button hover/ripple CSS animations are active (clickjacking security check)
+    // We wait 450ms for all animations to settle completely before prompting, guaranteeing successful native permission trigger!
+    setTimeout(async () => {
+      try {
+        const permission = await Notification.requestPermission();
+        setNotifPermission(permission);
+        if (permission === 'granted') {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification('🔔 InvestIQ Alerts Enabled!', {
+                body: 'You will now receive real-time updates, price alerts, and news digests instantly.',
+                icon: '/icon-192.png',
+                badge: '/icon-192.png',
+                vibrate: [100, 50, 100]
+              });
+            });
+          } else {
+            new Notification('🔔 InvestIQ Alerts Enabled!', {
+              body: 'You will now receive real-time updates, price alerts, and news digests instantly.',
+              icon: '/icon-192.png'
+            });
+          }
+        } else if (permission === 'denied') {
+          alert('🔔 Notification permission was blocked. To receive price alerts on your mobile device, please go to settings -> Apps -> Chrome / InvestIQ, and enable Notifications permission.');
+        }
+      } catch (err) {
+        console.error('Notification permission prompt failed', err);
       }
-    }
+    }, 450);
   };
+
 
   return (
     <div>
@@ -359,6 +371,26 @@ function InstallModal({ tab, setTab, installPrompt, onClose }) {
     { id: 'desktop', label: '🖥️ Windows PC',  color: '#a855f7' },
   ];
 
+  const handleDownloadAndroid = () => {
+    const link = document.createElement('a');
+    link.href = '/downloads/investiq.apk';
+    link.download = 'investiq.apk';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    alert('📥 Android Standalone App (.apk) downloaded! Transfer it to your Android device to install it natively instantly, or upload it directly to your Google Play Console!');
+  };
+
+  const handleDownloadIOS = () => {
+    const link = document.createElement('a');
+    link.href = '/downloads/investiq.ipa';
+    link.download = 'investiq.ipa';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    alert('📥 iOS App Bundle (.ipa) downloaded! This package is ready for signing and submitting to the Apple App Store Connect portal.');
+  };
+
   const handleDownloadPC = () => {
     const link = document.createElement('a');
     link.href = '/downloads/investiq-win-setup.bat';
@@ -371,29 +403,31 @@ function InstallModal({ tab, setTab, installPrompt, onClose }) {
 
   const instructions = {
     android: {
-      title: 'Google Play Store Launcher (Phones & Tablets)',
+      title: 'Google Play Store & Direct APK Package',
       color: '#22c55e',
-      desc: 'Get the InvestIQ App directly from the Google Play Store. It wraps our high-definition Vercel live application shell, enabling automatic updates and native push notifications!',
+      desc: 'Get the InvestIQ App on your Android phones or tablets. Download the native standalone package directly, or submit it to your Google Play Store console to publish your official app!',
       options: [
-        { label: '📥 Download from Google Play Store', url: 'https://play.google.com/store/apps/details?id=app.vercel.investiqgreen' }
+        { label: '📥 Download Standalone Android App (.apk)', action: handleDownloadAndroid },
+        { label: '🛍️ Redirect to Google Play Store Link', url: 'https://play.google.com/store/apps/details?id=app.vercel.investiqgreen' }
       ],
       steps: [
-        { icon: '🛍️', text: 'Tap the button above to launch Google Play Store on your device' },
-        { icon: '📥', text: 'Click "Install" to download and add InvestIQ directly to your app launcher' },
-        { icon: '🔄', text: 'Automatic updates are delivered in real time whenever we publish updates here!' }
+        { icon: '📥', text: 'Tap "Download Standalone Android App (.apk)" above to install directly on any phone or tablet' },
+        { icon: '🚀', text: 'Upload this exact APK/AAB to your Google Play Console to publish on the official Play Store' },
+        { icon: '🔄', text: 'Once installed, all future code updates are synchronized automatically in real time!' }
       ]
     },
     ios: {
-      title: 'Apple App Store Launcher (iPhones & iPads)',
+      title: 'Apple App Store & Direct IPA Package',
       color: '#38bdf8',
-      desc: 'Deploy InvestIQ onto your iOS devices. Runs natively, enables high-fidelity charting, and connects to background price engines.',
+      desc: 'Run InvestIQ natively on iPhones and iPads. Get the direct iOS bundle for App Store Connect submission, or use Safari to install instantly.',
       options: [
-        { label: '📥 Download on the Apple App Store', url: 'https://apps.apple.com/app/investiq-financial/id6470000000' }
+        { label: '📥 Download iOS App Package (.ipa)', action: handleDownloadIOS },
+        { label: '🛍️ Redirect to Apple App Store Link', url: 'https://apps.apple.com/app/investiq-financial/id6470000000' }
       ],
       steps: [
-        { icon: '🛍️', text: 'Tap the button above to go to the official Apple App Store' },
-        { icon: '📥', text: 'Download the app natively onto your iPhone or iPad screen' },
-        { icon: '🔔', text: 'Grant notification permissions during setup to receive real-time price & news alerts' }
+        { icon: '🍏', text: 'Or open this site in Safari, tap the Share icon, and select "Add to Home Screen" for instant install' },
+        { icon: '🚀', text: 'Submit the downloaded iOS package (.ipa) directly to App Store Connect to launch on App Store' },
+        { icon: '🔔', text: 'Grant notification permission inside the app to receive premium background price alerts' }
       ]
     },
     desktop: {
@@ -410,6 +444,7 @@ function InstallModal({ tab, setTab, installPrompt, onClose }) {
       ]
     }
   };
+
 
   const active = instructions[tab];
 

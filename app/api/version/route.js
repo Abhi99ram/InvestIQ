@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 // Incrementing this will instantly push alert notifications to all Android, iOS, and PC users.
 export async function GET() {
   return NextResponse.json({
-    version: '1.3.6',
-    releasedAt: '2026-05-17T15:30:00Z',
-    notes: 'Enabled full-scale mobile store and direct Windows installer update triggers.'
+    version: '1.3.8',
+    releasedAt: '2026-05-17T15:40:00Z',
+    notes: 'Configured clickjacking notification permission settle timeout and direct APK/IPA mobile downloads.'
   });
 }
