@@ -48,12 +48,15 @@ export async function PUT(request) {
 
     // Notify Admin of changes
     const gmailUser = 'investiq.helpdesk@gmail.com';
-    const gmailPass = process.env.GMAIL_APP_PASSWORD;
-    if (gmailPass && gmailPass !== 'YOUR_GMAIL_APP_PASSWORD_HERE') {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: gmailUser, pass: gmailPass },
-      });
+    const gmailPass = process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_APP_PASSWORD !== 'YOUR_GMAIL_APP_PASSWORD_HERE'
+      ? process.env.GMAIL_APP_PASSWORD
+      : 'mhne tsvo hbfl xmdi';
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: gmailUser, pass: gmailPass },
+    });
+
 
       let changesText = [];
       if (updatedUser.name !== targetUser.name) changesText.push(`Name: ${targetUser.name} -> ${updatedUser.name}`);
@@ -81,7 +84,7 @@ export async function PUT(request) {
           });
         } catch (e) { console.error('Failed to notify about update', e); }
       }
-    }
+
 
     return NextResponse.json({ 
       success: true, 

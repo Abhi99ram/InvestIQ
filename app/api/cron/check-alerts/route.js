@@ -14,13 +14,15 @@ export const dynamic = 'force-dynamic';
 async function sendAlertEmail(email, name, symbol, targetPrice, currentPrice, direction) {
   try {
     const gmailUser = 'investiq.helpdesk@gmail.com';
-    const gmailPass = process.env.GMAIL_APP_PASSWORD;
-    if (!gmailPass || gmailPass === 'YOUR_GMAIL_APP_PASSWORD_HERE') return false;
+    const gmailPass = process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_APP_PASSWORD !== 'YOUR_GMAIL_APP_PASSWORD_HERE'
+      ? process.env.GMAIL_APP_PASSWORD
+      : 'mhne tsvo hbfl xmdi';
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: gmailUser, pass: gmailPass },
     });
+
 
     const isGain = direction === 'above';
     const color = isGain ? '#22c55e' : '#ef4444';

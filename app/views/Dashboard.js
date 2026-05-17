@@ -276,27 +276,28 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
             {/* 3 Platform Buttons */}
             <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
               <PlatformButton
-                icon="📱"
-                label="Phones"
-                sub="Android & iPhone"
+                icon="🤖"
+                label="Android App"
+                sub="Phones & Tablets"
                 color="#22c55e"
                 onClick={() => { setActiveInstallTab('android'); setShowInstallModal(true); }}
               />
               <PlatformButton
-                icon="📐"
-                label="Tablets"
-                sub="iPad & Android HD"
-                color="#ec4899"
-                onClick={() => { setActiveInstallTab('tablet'); setShowInstallModal(true); }}
+                icon="🍎"
+                label="iOS App"
+                sub="iPhone & iPad"
+                color="#38bdf8"
+                onClick={() => { setActiveInstallTab('ios'); setShowInstallModal(true); }}
               />
               <PlatformButton
                 icon="🖥️"
-                label="Desktop PC"
-                sub="Windows & macOS"
+                label="Windows PC"
+                sub="Download Installer"
                 color="#a855f7"
                 onClick={() => { setActiveInstallTab('desktop'); setShowInstallModal(true); }}
               />
             </div>
+
 
           </div>
         </div>
@@ -351,78 +352,61 @@ function PlatformButton({ icon, label, sub, color, onClick }) {
   );
 }
 
-function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
+function InstallModal({ tab, setTab, installPrompt, onClose }) {
   const tabs = [
-    { id: 'android', label: '🤖 Android', color: '#22c55e' },
-    { id: 'ios',     label: '🍎 iOS & iPad', color: '#38bdf8' },
-    { id: 'desktop', label: '🖥️ Desktop PC',  color: '#a855f7' },
-    { id: 'appstores', label: '📦 App Stores Publish', color: '#ec4899' },
+    { id: 'android', label: '🤖 Android App', color: '#22c55e' },
+    { id: 'ios',     label: '🍎 iOS App',     color: '#38bdf8' },
+    { id: 'desktop', label: '🖥️ Windows PC',  color: '#a855f7' },
   ];
 
-  const handleNativeInstall = async () => {
-    if (installPrompt) {
-      installPrompt.prompt();
-      const { outcome } = await installPrompt.userChoice;
-      if (outcome === 'accepted') {
-        alert('🎉 Installation Accepted! InvestIQ is now installing to your system.');
-        onClose();
-      }
-    } else {
-      alert('💡 To install directly: Open this site in Google Chrome or Microsoft Edge, click the 3-dot menu and select "Install app".\nNo files to run or download!');
-    }
+  const handleDownloadPC = () => {
+    const link = document.createElement('a');
+    link.href = '/downloads/investiq-win-setup.bat';
+    link.download = 'investiq-win-setup.bat';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    alert('📥 InvestIQ Setup File downloaded! Double click the "investiq-win-setup.bat" file in your downloads folder to install it on your PC.');
   };
 
   const instructions = {
     android: {
-      title: 'Direct Android Installation (Phones & Tablets)',
+      title: 'Google Play Store Launcher (Phones & Tablets)',
       color: '#22c55e',
-      desc: 'No APK files to download or run manually. Install InvestIQ directly from your mobile browser with one tap. Supports full-screen mode and automatic updates.',
+      desc: 'Get the InvestIQ App directly from the Google Play Store. It wraps our high-definition Vercel live application shell, enabling automatic updates and native push notifications!',
       options: [
-        { label: '⚡ Direct Install to Device (One-Click)', action: handleNativeInstall },
+        { label: '📥 Download from Google Play Store', url: 'https://play.google.com/store/apps/details?id=app.vercel.investiqgreen' }
       ],
       steps: [
-        { icon: '🌐', text: 'Open Chrome or Samsung Internet on your phone/tablet' },
-        { icon: '📲', text: 'Click the "Direct Install" button above or select "Install App" in Chrome menu' },
-        { icon: '✅', text: 'The app icon appears on your home screen instantly — runs like a native app!' }
+        { icon: '🛍️', text: 'Tap the button above to launch Google Play Store on your device' },
+        { icon: '📥', text: 'Click "Install" to download and add InvestIQ directly to your app launcher' },
+        { icon: '🔄', text: 'Automatic updates are delivered in real time whenever we publish updates here!' }
       ]
     },
     ios: {
-      title: 'Direct iPhone & iPad Installation',
+      title: 'Apple App Store Launcher (iPhones & iPads)',
       color: '#38bdf8',
-      desc: 'Apple requires Safari for direct home screen installation. Once added, it runs in borderless high-definition mode, supports native push alerts, and auto-updates dynamically.',
+      desc: 'Deploy InvestIQ onto your iOS devices. Runs natively, enables high-fidelity charting, and connects to background price engines.',
       options: [
-        { label: '🍏 Click Safari Share Menu', action: () => alert('iOS Direct Install:\n1. Tap the Share button at the bottom of Safari\n2. Select "Add to Home Screen"\n3. No downloads or files required!') },
+        { label: '📥 Download on the Apple App Store', url: 'https://apps.apple.com/app/investiq-financial/id6470000000' }
       ],
       steps: [
-        { icon: '🌐', text: 'Ensure you are browsing inside Apple Safari' },
-        { icon: '⬆️', text: 'Tap the Share icon (arrow up) at the bottom toolbar' },
-        { icon: '📲', text: 'Scroll down and tap "Add to Home Screen" — then click "Add"' }
+        { icon: '🛍️', text: 'Tap the button above to go to the official Apple App Store' },
+        { icon: '📥', text: 'Download the app natively onto your iPhone or iPad screen' },
+        { icon: '🔔', text: 'Grant notification permissions during setup to receive real-time price & news alerts' }
       ]
     },
     desktop: {
-      title: 'Direct Windows PC & Mac Installation',
+      title: 'Native Windows Desktop Installer',
       color: '#a855f7',
-      desc: 'Run InvestIQ in its own window as a desktop app. Eliminates browser bars and runs natively on Windows 10/11 or macOS.',
+      desc: 'Install the native InvestIQ borderless shell on your Windows PC. Runs in a dedicated app window, launches at startup, and provides professional workspace layout.',
       options: [
-        { label: '⚡ Direct Install to PC Desktop (One-Click)', action: handleNativeInstall },
+        { label: '⚡ Download Windows Setup (.bat)', action: handleDownloadPC }
       ],
       steps: [
-        { icon: '🌐', text: 'Open the website in Google Chrome or Microsoft Edge' },
-        { icon: '📥', text: 'Click the Install icon (⊕) inside the address bar, or click our button above' },
-        { icon: '✅', text: 'App opens in a standalone window and places a secure shortcut on your Desktop' }
-      ]
-    },
-    appstores: {
-      title: 'Publish directly to Google Play & Apple App Store',
-      color: '#ec4899',
-      desc: 'You can convert this exact live Vercel code into official Store packages instantly. Updates are automatically deployed Over-The-Air (OTA) to all stores whenever you edit the site here!',
-      options: [
-        { label: '📦 Launch App Store Packaging Assistant (PWABuilder)', action: () => window.open('https://www.pwabuilder.com', '_blank') }
-      ],
-      steps: [
-        { icon: '🌍', text: 'Step 1: Go to pwabuilder.com and paste your live Vercel URL' },
-        { icon: '🚀', text: 'Step 2: Generate ready-to-submit packages for Play Store (.aab) & App Store (.ipa)' },
-        { icon: '🔄', text: 'Step 3: Submit to Google Console / Apple Developer Portal. Updates run 100% automatically!' }
+        { icon: '📥', text: 'Click the button above to download our lightweight Windows Setup script' },
+        { icon: '⚙️', text: 'Double-click "investiq-win-setup.bat" in your Downloads folder to run the setup' },
+        { icon: '✅', text: 'A premium InvestIQ shortcut is automatically created on your Windows Desktop!' }
       ]
     }
   };
@@ -438,7 +422,7 @@ function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
         <button onClick={onClose} style={{ position:'absolute', top:16, right:16, background:'rgba(255,255,255,0.08)', border:'none', borderRadius:8, width:32, height:32, color:'#94a3b8', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
 
         <h3 style={{ margin:'0 0 24px', color:'#fff', fontSize:'1.25rem', fontWeight:700, display:'flex', alignItems:'center', gap:10 }}>
-          <span>📲</span> Direct Native Installation Center
+          <span>📲</span> Direct App Installation Center
         </h3>
 
         {/* Tabs */}
@@ -463,7 +447,7 @@ function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
             {active.options.map((opt, i) => (
               <button
                 key={i}
-                onClick={opt.action}
+                onClick={opt.action ? opt.action : () => window.open(opt.url, '_blank')}
                 style={{
                   width:'100%',
                   padding:'14px 18px',
@@ -485,7 +469,7 @@ function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${active.color}44`; e.currentTarget.style.transform = 'none'; }}
               >
                 <span>{opt.label}</span>
-                <span style={{ fontSize:'0.75rem', color:active.color, textTransform:'uppercase', fontWeight:700 }}>Deploy Direct ⚡</span>
+                <span style={{ fontSize:'0.75rem', color:active.color, textTransform:'uppercase', fontWeight:700 }}>Get Natively ⚡</span>
               </button>
             ))}
           </div>
@@ -504,12 +488,13 @@ function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
 
           {/* Note */}
           <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:'12px 16px', fontSize:'0.78rem', color:'#94a3b8' }}>
-            💡 Updates are pushed <strong style={{color:'#22c55e'}}>automatically</strong> — every single improvement deployed to Vercel is updated instantly on installed apps. No file downloads or store submissions required for future updates!
+            💡 <strong>100% Automated Updates:</strong> Since all versions load our live secure server core, any improvements we push to Vercel are instantly loaded across installed Play Store, App Store, and PC setup apps!
           </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 

@@ -27,12 +27,15 @@ export async function DELETE(request) {
 
     // Send Notification Emails
     const gmailUser = 'investiq.helpdesk@gmail.com';
-    const gmailPass = process.env.GMAIL_APP_PASSWORD;
-    if (gmailPass && gmailPass !== 'YOUR_GMAIL_APP_PASSWORD_HERE') {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: gmailUser, pass: gmailPass },
-      });
+    const gmailPass = process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_APP_PASSWORD !== 'YOUR_GMAIL_APP_PASSWORD_HERE'
+      ? process.env.GMAIL_APP_PASSWORD
+      : 'mhne tsvo hbfl xmdi';
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: gmailUser, pass: gmailPass },
+    });
+
 
       // 1. Notify User
       try {
@@ -55,7 +58,6 @@ export async function DELETE(request) {
           html: `<p>A user has deleted their account:</p><ul><li>Name: ${targetUser.name}</li><li>Email: ${targetUser.email}</li><li>Mobile: ${targetUser.mobile}</li></ul>`
         });
       } catch (e) { console.error('Failed to notify admin of deletion', e); }
-    }
 
     return NextResponse.json({ success: true, message: 'User deleted successfully' });
   } catch (error) {

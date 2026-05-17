@@ -6,31 +6,17 @@ export const dynamic = 'force-dynamic';
 // ── Gmail SMTP (if App Password set) or Ethereal fallback ────────────────────
 async function createMailTransporter() {
   const gmailUser = 'investiq.helpdesk@gmail.com';
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_APP_PASSWORD !== 'YOUR_GMAIL_APP_PASSWORD_HERE'
+    ? process.env.GMAIL_APP_PASSWORD
+    : 'mhne tsvo hbfl xmdi';
 
-  // Use real Gmail if App Password is configured properly
-  if (gmailPass && gmailPass !== 'YOUR_GMAIL_APP_PASSWORD_HERE') {
-    return {
-      transporter: nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: gmailUser, pass: gmailPass },
-      }),
-      fromAddr: gmailUser,
-      isReal: true,
-    };
-  }
-
-  // Fallback: Ethereal (fake email — for preview only)
-  const testAccount = await nodemailer.createTestAccount();
   return {
     transporter: nodemailer.createTransport({
-      host: testAccount.smtp.host,
-      port: testAccount.smtp.port,
-      secure: testAccount.smtp.secure,
-      auth: { user: testAccount.user, pass: testAccount.pass },
+      service: 'gmail',
+      auth: { user: gmailUser, pass: gmailPass },
     }),
-    fromAddr: testAccount.user,
-    isReal: false,
+    fromAddr: gmailUser,
+    isReal: true,
   };
 }
 

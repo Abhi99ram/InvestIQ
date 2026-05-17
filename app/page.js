@@ -37,13 +37,41 @@ export default function Home() {
   const [selectedSector, setSelectedSector] = useState(null);
   const [notifCount, setNotifCount] = useState(0);
 
+  // System Update Checker State
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [updateVersion, setUpdateVersion] = useState(null);
+
   // Load user from localStorage on mount
   useEffect(() => {
     const savedUser = localStorage.getItem('investiq_user');
     if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
-  // Poll for notifications
+  // Poll for system updates (runs on all installed devices: Android, iOS, PC desktop)
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const res = await fetch('/api/version');
+        const data = await res.json();
+        const storedVer = localStorage.getItem('investiq_version');
+
+        if (!storedVer) {
+          localStorage.setItem('investiq_version', data.version);
+        } else if (storedVer !== data.version) {
+          setUpdateAvailable(true);
+          setUpdateVersion(data.version);
+        }
+      } catch (err) {
+        console.error('Failed to check app version', err);
+      }
+    };
+
+    checkVersion();
+    const interval = setInterval(checkVersion, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  // Poll for alerts notification count
   useEffect(() => {
     if (!user) return;
     const fetchNotifs = async () => {
@@ -57,6 +85,14 @@ export default function Home() {
     const int = setInterval(fetchNotifs, 30000);
     return () => clearInterval(int);
   }, [user]);
+
+  const handleApplyUpdate = () => {
+    if (updateVersion) {
+      localStorage.setItem('investiq_version', updateVersion);
+      window.location.reload(true);
+    }
+  };
+
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -72,6 +108,7 @@ export default function Home() {
     setUser(updatedUser);
     localStorage.setItem('investiq_user', JSON.stringify(updatedUser));
   };
+
 
   const handleSearch = useCallback(async (q) => {
     setSearchQuery(q);
@@ -190,8 +227,33 @@ export default function Home() {
 
       {/* Main */}
       <div className="main-content">
+        {/* Dynamic Auto-Update Notification Banner (Play Store, App Store, and PC Wrapper updates) */}
+        {updateAvailable && (
+          <div onClick={handleApplyUpdate} style={{
+            background: 'linear-gradient(90deg, #22c55e, #0ea5e9, #a855f7)',
+            padding: '12px 20px',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            textAlign: 'center',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            boxShadow: '0 8px 24px rgba(14,165,233,0.3)',
+            zIndex: 9999,
+            transition: 'all 0.3s ease'
+          }}>
+            <span>🚀 SYSTEM UPDATE DETECTED!</span>
+            <span style={{ fontWeight: 400 }}>InvestIQ v{updateVersion} has been deployed successfully.</span>
+            <span style={{ background:'rgba(255,255,255,0.22)', padding:'4px 10px', borderRadius:8, fontSize:'0.72rem', letterSpacing:1, fontWeight:700 }}>RELOAD & UPDATE NOW ⚡</span>
+          </div>
+        )}
+
         {/* Header */}
         <header className="header">
+
           <button className="hamburger-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
             ☰
           </button>

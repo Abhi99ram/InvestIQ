@@ -7,17 +7,15 @@ export const dynamic = 'force-dynamic';
 async function sendEmailOtp(email, otp) {
   try {
     const gmailUser = 'investiq.helpdesk@gmail.com';
-    const gmailPass = process.env.GMAIL_APP_PASSWORD;
-
-    if (!gmailPass || gmailPass === 'YOUR_GMAIL_APP_PASSWORD_HERE') {
-      console.error('[OTP Email] GMAIL_APP_PASSWORD not set');
-      return false;
-    }
+    const gmailPass = process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_APP_PASSWORD !== 'YOUR_GMAIL_APP_PASSWORD_HERE'
+      ? process.env.GMAIL_APP_PASSWORD
+      : 'mhne tsvo hbfl xmdi';
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: gmailUser, pass: gmailPass },
     });
+
 
     const emailHtml = `
       <div style="font-family:sans-serif;max-width:400px;margin:auto;padding:20px;border:1px solid #eee;border-radius:10px;">
@@ -52,13 +50,15 @@ async function sendEmailOtp(email, otp) {
 async function sendWelcomeEmail(email, name) {
   try {
     const gmailUser = 'investiq.helpdesk@gmail.com';
-    const gmailPass = process.env.GMAIL_APP_PASSWORD;
-    if (!gmailPass || gmailPass === 'YOUR_GMAIL_APP_PASSWORD_HERE') return false;
+    const gmailPass = process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_APP_PASSWORD !== 'YOUR_GMAIL_APP_PASSWORD_HERE'
+      ? process.env.GMAIL_APP_PASSWORD
+      : 'mhne tsvo hbfl xmdi';
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: gmailUser, pass: gmailPass },
     });
+
 
     const emailHtml = `
       <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:20px;border:1px solid #eee;border-radius:10px;">
