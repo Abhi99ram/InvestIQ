@@ -507,7 +507,7 @@ Produce ONLY a valid JSON object with the following exact keys:
 {
   "narrativeSummary": "3-4 sentence plain-language summary of the portfolio's situation",
   "topRisk": "the single biggest risk in 1 sentence",
-  "macroImpact": "how VIX, Yields, and USD/INR are specifically affecting this portfolio (crucially, evaluate Indian 10Y Yields/Data for Indian stocks, US 10Y Yields for foreign stocks, and consider USD/INR FX risk for foreign exposure)",
+  "macroImpact": "How macroeconomic variables specifically affect this portfolio. You must explain how the provided Macro variables (e.g. VIX, US10Y, IN10Y, USDINR) affect the specific regional stocks and asset classes (e.g. Metals, Global Equity, Indian Equity) present in the payload. Ensure you explicitly cite the values of the macro variables you reference.",
   "suggestions": [
     {
       "action": "Reduce Reliance Industries by 15%",
@@ -534,7 +534,7 @@ Produce ONLY a valid JSON object with the following exact keys:
     });
 
     const aiData = await aiResponse.json();
-    if (aiData.error) throw new Error("Groq API error");
+    if (aiData.error) throw new Error(`Groq API error: ${aiData.error.message || JSON.stringify(aiData.error)}`);
 
     let parsedResult;
     try {
