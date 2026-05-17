@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 // Incrementing this will instantly push alert notifications to all Android, iOS, and PC users.
 export async function GET() {
   return NextResponse.json({
-    version: '1.5.1',
-    releasedAt: '2026-05-17T20:30:00Z',
-    notes: 'Fixed PWA cache causing blank page after updates. Clear cache and reload for latest build.'
+    version: '1.5.2',
+    releasedAt: '2026-05-17T21:00:00Z',
+    notes: 'Removed broken offline cache. Site loads directly from network for reliable access.'
   });
 }

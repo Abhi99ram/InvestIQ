@@ -2,7 +2,7 @@
   "name": "InvestIQ AI — Financial Intelligence",
   "short_name": "InvestIQ",
   "description": "Real-time market intelligence, AI-powered stock analysis, and portfolio simulation for Indian & global markets.",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#0f172a",
