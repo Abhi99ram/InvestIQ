@@ -756,7 +756,61 @@ a:hover { color: #7dd3fc; }
 @media (max-width: 600px) {
   .index-cards { grid-template-columns: repeat(2, 1fr); }
   .grid-4 { grid-template-columns: 1fr; }
-  .header .search-box { display: none; } /* Hide global search on mobile for cleaner top bar */
+  .header .search-box { display: none; } /* Hide global header search on mobile */
+  .page-container { overflow: visible; }
+}
+
+/* Analysis page — dedicated stock search (visible on mobile) */
+.analysis-search-card {
+  overflow: visible !important;
+  z-index: 120;
+}
+.analysis-search-card::after {
+  display: none;
+}
+.analysis-search-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.analysis-search-field {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin-bottom: 0 !important;
+  position: relative;
+  z-index: 130;
+}
+.analysis-search-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+}
+@media (max-width: 600px) {
+  .analysis-search-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .analysis-search-field {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .analysis-search-actions {
+    width: 100%;
+  }
+  .analysis-search-actions .btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+  .analysis-search-card .form-input {
+    font-size: 16px; /* prevents iOS zoom-on-focus hiding the field */
+    min-height: 44px;
+  }
+  .analysis-search-card .search-results {
+    max-height: min(50vh, 280px);
+    overflow-y: auto;
+  }
 }
 
 

@@ -99,16 +99,27 @@ const CHAT_SUGGESTIONS = [
 ];
 
 // ── AnalysisCard: compact card with key metrics + 1-2 line insight ────────────
-function AnalysisCard({ icon, title, isBullish, trigger, metrics }) {
-  const borderColor = isBullish ? '#10b981' : '#ef4444';
+function formatCurrency(value, currency = 'INR') {
+  if (value == null || Number.isNaN(Number(value))) return 'N/A';
+  const n = Number(value);
+  if (currency === 'INR') return `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+  if (currency === 'EUR') return `€${n.toFixed(2)}`;
+  if (currency === 'GBP') return `£${n.toFixed(2)}`;
+  return `$${n.toFixed(2)}`;
+}
+
+function AnalysisCard({ icon, title, isBullish, badgeLabel, trigger, metrics }) {
+  const borderColor = isBullish ? '#10b981' : badgeLabel?.includes('Cautious') || badgeLabel?.includes('Oversold') ? '#f59e0b' : '#ef4444';
+  const badge = badgeLabel || (isBullish ? '▲ Bullish' : '▼ Bearish');
+  const badgeColor = isBullish ? '#10b981' : badge.includes('Cautious') || badge.includes('Oversold') ? '#f59e0b' : '#ef4444';
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderLeft: `6px solid ${borderColor}`, borderRadius: 16, padding: '24px 30px' }}>
       {/* Title + badge */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <span style={{ fontSize: '1.4rem' }}>{icon}</span>
         <span style={{ fontWeight: 800, fontSize: '1.3rem', color: '#f1f5f9' }}>{title}</span>
-        <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: '0.85rem', fontWeight: 700, background: isBullish ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: isBullish ? '#10b981' : '#ef4444', border: `1px solid ${isBullish ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
-          {isBullish ? '▲ Bullish' : '▼ Bearish'}
+        <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: '0.85rem', fontWeight: 700, background: `${badgeColor}22`, color: badgeColor, border: `1px solid ${badgeColor}44` }}>
+          {badge}
         </span>
       </div>
       {/* Key metrics row */}
@@ -262,9 +273,9 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
       <div className="section-header"><h1 className="section-title">📈 Trend Analysis & Insights</h1></div>
 
       {/* Search */}
-      <div className="card" style={{ marginBottom: 20, position: 'relative', zIndex: 50, overflow: 'visible' }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div className="form-group" style={{ flex: 1, minWidth: 200, marginBottom: 0, position: 'relative', zIndex: 1000 }}>
+      <div className="card analysis-search-card" style={{ marginBottom: 20 }}>
+        <div className="analysis-search-toolbar">
+          <div className="form-group analysis-search-field">
             <label className="form-label">Stock Symbol</label>
             <input className="form-input" value={inputSym} onChange={e => handleSearch(e.target.value)}
               onFocus={() => searchResults.length > 0 && setShowSearch(true)}
@@ -286,11 +297,13 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
               </div>
             )}
           </div>
-          <button className="btn btn-primary" onClick={handleAnalyze} disabled={loading}>
-            {loading ? '⏳ Analyzing...' : '🔍 Analyze'}
-          </button>
-          <button className="btn btn-secondary" onClick={() => { setInputSym('INFY.NS'); setSymbol('INFY.NS'); analyze('INFY.NS'); }}>Try INFY</button>
-          <button className="btn btn-secondary" onClick={() => { setInputSym('AAPL'); setSymbol('AAPL'); analyze('AAPL'); }}>Try AAPL</button>
+          <div className="analysis-search-actions">
+            <button className="btn btn-primary" onClick={handleAnalyze} disabled={loading}>
+              {loading ? '⏳ Analyzing...' : '🔍 Analyze'}
+            </button>
+            <button className="btn btn-secondary" onClick={() => { setInputSym('INFY.NS'); setSymbol('INFY.NS'); analyze('INFY.NS'); }}>Try INFY</button>
+            <button className="btn btn-secondary" onClick={() => { setInputSym('AAPL'); setSymbol('AAPL'); analyze('AAPL'); }}>Try AAPL</button>
+          </div>
         </div>
       </div>
 
@@ -318,31 +331,36 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
           </div>
 
           {/* Tri-Layer Engine Output — Premium Cards */}
-          {triLayer && (
+          {triLayer && (() => {
+            const cur = triLayer.currency || 'INR';
+            const f = triLayer.layers.fundamental;
+            const t = triLayer.layers.technical;
+            return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
 
               {/* FUNDAMENTAL */}
               <AnalysisCard
-                layer="fundamental"
                 icon="1️⃣"
                 title="Fundamental Analysis"
-                isBullish={triLayer.layers.fundamental.isBullish}
-                trigger={triLayer.layers.fundamental.trigger}
+                isBullish={f.isBullish}
+                badgeLabel={f.verdict === 'Overvalued' ? '▼ Overvalued' : f.isBullish ? '▲ Bullish' : '▼ Bearish'}
+                trigger={f.trigger}
                 metrics={[
-                  { label: 'Intrinsic Value', value: triLayer.layers.fundamental.intrinsicValue ? `₹${triLayer.layers.fundamental.intrinsicValue.toFixed(0)}` : 'N/A', color: triLayer.layers.fundamental.isUndervalued ? 'var(--gain)' : 'var(--text-primary)' },
-                  { label: 'Margin of Safety', value: triLayer.layers.fundamental.intrinsicValue ? `${triLayer.layers.fundamental.marginOfSafety.toFixed(1)}%` : 'N/A', color: triLayer.layers.fundamental.marginOfSafety > 10 ? 'var(--gain)' : triLayer.layers.fundamental.marginOfSafety < 0 ? 'var(--loss)' : 'var(--text-primary)' },
-                  { label: 'Debt / Equity', value: triLayer.layers.fundamental.debtToEquity != null ? `${triLayer.layers.fundamental.debtToEquity.toFixed(2)}x` : 'N/A', color: triLayer.layers.fundamental.debtToEquity < 1.5 ? 'var(--gain)' : 'var(--loss)' },
-                  { label: 'FCF Yield', value: triLayer.layers.fundamental.fcfYield != null ? `${triLayer.layers.fundamental.fcfYield.toFixed(2)}%` : 'N/A', color: triLayer.layers.fundamental.fcfYield > 3 ? 'var(--gain)' : 'var(--text-primary)' },
+                  { label: 'Intrinsic Value', value: f.intrinsicValue ? formatCurrency(f.intrinsicValue, cur) : 'N/A', color: f.isUndervalued ? 'var(--gain)' : 'var(--text-primary)' },
+                  { label: 'Premium / Discount', value: f.premiumDiscount != null ? `${f.premiumDiscount > 0 ? '+' : ''}${f.premiumDiscount.toFixed(1)}%` : 'N/A', color: f.premiumDiscount > 15 ? 'var(--loss)' : f.premiumDiscount < 0 ? 'var(--gain)' : 'var(--text-primary)' },
+                  { label: 'Margin of Safety', value: f.intrinsicValue ? `${Math.max(0, f.marginOfSafety).toFixed(1)}%` : 'N/A', color: f.marginOfSafety > 10 ? 'var(--gain)' : f.marginOfSafety <= 0 ? 'var(--loss)' : 'var(--text-primary)' },
+                  { label: 'Debt / Equity', value: f.debtToEquity != null ? `${f.debtToEquity.toFixed(2)}x` : 'N/A', color: f.debtToEquity != null && f.debtToEquity < 1.5 ? 'var(--gain)' : 'var(--loss)' },
+                  { label: 'FCF Yield', value: f.fcfYield != null ? `${f.fcfYield.toFixed(2)}%` : 'N/A', color: f.fcfYield > 3 ? 'var(--gain)' : 'var(--text-primary)' },
                 ]}
               />
 
               {/* TECHNICAL */}
               <AnalysisCard
-                layer="technical"
                 icon="2️⃣"
                 title="Technical Analysis"
-                isBullish={triLayer.layers.technical.isBullish}
-                trigger={triLayer.layers.technical.trigger}
+                isBullish={t.isBullish}
+                badgeLabel={t.verdict || (t.isBullish ? '▲ Bullish' : '▼ Bearish')}
+                trigger={t.trigger}
                 metrics={[
                   { label: 'RSI (14)', value: triLayer.layers.technical.rsi14?.toFixed(1) || 'N/A', color: triLayer.layers.technical.rsi14 > 70 ? 'var(--loss)' : triLayer.layers.technical.rsi14 < 30 ? 'var(--gain)' : 'var(--gain)' },
                   { label: '200 EMA', value: triLayer.layers.technical.ema200?.toFixed(0) || 'N/A', color: triLayer.layers.technical.currentPrice > triLayer.layers.technical.ema200 ? 'var(--gain)' : 'var(--loss)' },
@@ -355,7 +373,6 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
 
               {/* MACRO */}
               <AnalysisCard
-                layer="macro"
                 icon="3️⃣"
                 title="Macro Overlay"
                 isBullish={triLayer.layers.macro.isBullish}
@@ -363,14 +380,15 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
                 metrics={[
                   { label: 'Market Verdict', value: triLayer.layers.macro.isBullish ? 'Favorable' : 'Unfavorable', color: triLayer.layers.macro.isBullish ? 'var(--gain)' : 'var(--loss)' },
                   ...(triLayer.targetEntry && triLayer.targetExit ? [
-                    { label: 'Target Entry', value: `₹${triLayer.targetEntry}`, color: 'var(--accent-cyan)' },
-                    { label: 'Target Exit', value: `₹${triLayer.targetExit}`, color: 'var(--gain)' },
+                    { label: 'Target Entry', value: triLayer.targetEntryFormatted || formatCurrency(triLayer.targetEntry, cur), color: 'var(--accent-cyan)' },
+                    { label: 'Target Exit', value: triLayer.targetExitFormatted || formatCurrency(triLayer.targetExit, cur), color: 'var(--gain)' },
                   ] : []),
                 ]}
               />
 
             </div>
-          )}
+            );
+          })()}
 
           <div className="card" style={{ marginBottom: 20 }}>
             <div className="card-header">
