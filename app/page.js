@@ -150,18 +150,43 @@ export default function Home() {
 
   if (!user) {
     return (
-      <div className="app-layout" style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ padding: '20px', width: '100%' }}>
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <img src="/logo.png" alt="InvestIQ Logo" style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 8px 32px rgba(56,189,248,0.3)' }} />
-            <h1 style={{ fontSize: '2.5rem', color: 'var(--text-primary)' }}>InvestIQ AI</h1>
-            <p style={{ color: 'var(--text-muted)' }}>Financial Intelligence Dashboard</p>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
+        {updateAvailable && (
+          <div onClick={handleApplyUpdate} style={{
+            background: 'linear-gradient(90deg, #22c55e, #0ea5e9, #a855f7)',
+            padding: '14px 20px',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            textAlign: 'center',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            boxShadow: '0 8px 24px rgba(14,165,233,0.3)',
+            zIndex: 99999,
+            transition: 'all 0.3s ease'
+          }}>
+            <span>🚀 SYSTEM UPDATE DETECTED!</span>
+            <span style={{ fontWeight: 400 }}>InvestIQ v{updateVersion} has been deployed successfully.</span>
+            <span style={{ background:'rgba(255,255,255,0.22)', padding:'4px 10px', borderRadius:8, fontSize:'0.72rem', letterSpacing:1, fontWeight:700 }}>RELOAD & UPDATE NOW ⚡</span>
           </div>
-          <Auth onLogin={handleLogin} />
+        )}
+        <div className="app-layout" style={{ justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+          <div style={{ padding: '20px', width: '100%' }}>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <img src="/logo.png" alt="InvestIQ Logo" style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 8px 32px rgba(56,189,248,0.3)' }} />
+              <h1 style={{ fontSize: '2.5rem', color: 'var(--text-primary)' }}>InvestIQ AI</h1>
+              <p style={{ color: 'var(--text-muted)' }}>Financial Intelligence Dashboard</p>
+            </div>
+            <Auth onLogin={handleLogin} />
+          </div>
         </div>
       </div>
     );
   }
+
 
   if (user.email === 'alapatisubhashchowdary1233@gmail.com' || user.email === 'investiq.helpdesk@gmail.com') {
     return (
