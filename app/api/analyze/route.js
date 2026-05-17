@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 import { generateTriLayerAnalysis } from '../../../lib/engine/confluence';
+import { resolveCurrency } from '../../../lib/market';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,11 @@ export async function GET(request) {
     const sharesOut     = dks.sharesOutstanding;
     const marketCap     = pr.marketCap || (currentPrice && sharesOut ? currentPrice * sharesOut : null);
 
+    const currency = resolveCurrency(symbol, quoteData?.currency || pr.currency);
+
     const financialData = {
+      symbol,
+      currency,
       currentPrice,
       freeCashflow:       fd.freeCashflow,
       totalDebt:          fd.totalDebt,

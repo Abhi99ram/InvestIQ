@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
+import { resolveCurrency } from '../../../lib/market';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,8 +25,8 @@ export async function GET(request) {
 
   const symbolList = symbols.split(',').map(s => s.trim()).filter(Boolean);
   const isSingleStock = symbolList.length === 1;
-  // Single stock = 5s cache (real-time), batch = 30s cache (dashboard)
-  const TTL = isSingleStock ? 5000 : 30000;
+  // Single stock = 2s cache (near real-time), batch = 15s (dashboard refresh)
+  const TTL = isSingleStock ? 2000 : 15000;
 
   const results = {};
   const toFetch = [];
@@ -50,7 +51,8 @@ export async function GET(request) {
           fiftyTwoWeekHigh: quote.fiftyTwoWeekHigh, fiftyTwoWeekLow: quote.fiftyTwoWeekLow,
           pe: quote.trailingPE, eps: quote.epsTrailingTwelveMonths,
           dividendYield: quote.dividendYield, exchange: quote.exchange,
-          currency: quote.currency, marketState: quote.marketState,
+          currency: resolveCurrency(symbol, quote.currency),
+          marketState: quote.marketState,
           fetchedAt: new Date().toISOString(),
         };
         setCache(`quote_${symbol}`, data);

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { SECTORS, getAllSectorNames } from '../../lib/sectors';
+import { formatPrice, resolveCurrency } from '../../lib/market';
 import NewsFeed from '../components/NewsFeed';
 
 export default function Sectors({ selectedSector, onSelectStock }) {
@@ -17,7 +18,7 @@ export default function Sectors({ selectedSector, onSelectStock }) {
     if (!s) return;
     const symbols = [...s.nse.slice(0, 5), ...s.us.slice(0, 5)].join(',');
     try {
-      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`);
+      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}&_t=${Date.now()}`);
       const data = await res.json();
       setSectorData(data);
     } catch (e) { console.error(e); }
@@ -72,7 +73,7 @@ export default function Sectors({ selectedSector, onSelectStock }) {
                         <tr key={sym} onClick={() => onSelectStock(sym)} style={{ cursor: 'pointer' }}>
                           <td><strong>{sym}</strong></td>
                           <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{d.name}</td>
-                          <td>{d.price?.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                          <td>{d.price != null ? formatPrice(d.price, resolveCurrency(sym, d.currency)) : '-'}</td>
                           <td className={isGain ? 'gain' : 'loss'}>
                             {isGain ? '▲' : '▼'} {d.changePercent?.toFixed(2)}%
                           </td>

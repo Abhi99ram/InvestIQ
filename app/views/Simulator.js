@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { formatPrice, formatPriceCompact, formatMultiCurrencyTotals, sumByCurrency, resolveCurrency, currencySymbol } from '../../lib/market';
 
 const LOADING_STEPS = [
   "Initializing institutional quant engine...",
@@ -64,15 +65,42 @@ export default function Simulator() {
     if (symbol === '^NSEI') displayName = 'Nifty 50';
 
     try {
-      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbol)}`);
+      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbol)}&_t=${Date.now()}`);
       const data = await res.json();
-      const price = data[symbol]?.price || 0;
-      setPortfolio([...portfolio, { symbol, name: displayName, price, shares: 1, type }]);
+      const q = data[symbol] || {};
+      const price = q.price || 0;
+      const currency = resolveCurrency(symbol, q.currency);
+      setPortfolio([...portfolio, { symbol, name: displayName, price, currency, shares: 1, type }]);
       setSearchQuery(''); setShowSearch(false); setResults(null);
     } catch (e) { alert("Could not fetch price."); }
   };
 
-  const currentPortfolioValue = useMemo(() => portfolio.reduce((acc, p) => acc + (p.price * p.shares), 0), [portfolio]);
+  const portfolioTotals = useMemo(() => sumByCurrency(portfolio), [portfolio]);
+  const currentPortfolioValue = useMemo(() => Object.values(portfolioTotals).reduce((a, b) => a + b, 0), [portfolioTotals]);
+  const primaryCurrency = useMemo(() => {
+    const set = new Set(portfolio.map(p => p.currency || resolveCurrency(p.symbol)));
+    return set.size === 1 ? [...set][0] : 'USD';
+  }, [portfolio]);
+
+  // Refresh live prices for portfolio assets
+  useEffect(() => {
+    if (portfolio.length === 0) return;
+    const refresh = async () => {
+      try {
+        const symbols = portfolio.map(p => p.symbol).join(',');
+        const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}&_t=${Date.now()}`);
+        const data = await res.json();
+        setPortfolio(prev => prev.map(p => {
+          const q = data[p.symbol];
+          if (!q?.price) return p;
+          return { ...p, price: q.price, currency: resolveCurrency(p.symbol, q.currency) };
+        }));
+      } catch { /* ignore */ }
+    };
+    refresh();
+    const id = setInterval(refresh, 5000);
+    return () => clearInterval(id);
+  }, [portfolio.length]);
 
   const handleSharesChange = (symbol, sharesStr) => {
     const s = Number(sharesStr);
@@ -255,7 +283,7 @@ export default function Simulator() {
                           <div style={{ background: 'rgba(51,65,85,0.4)', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>{icon}</div>
                           <div>
                             <div style={{ fontSize: '0.9rem', color: '#f8fafc', fontWeight: 'bold' }}>{p.symbol}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Val: ₹{pVal.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Val: {formatPrice(pVal, p.currency || resolveCurrency(p.symbol))} · {formatPrice(p.price, p.currency || resolveCurrency(p.symbol))}/sh</div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -280,7 +308,7 @@ export default function Simulator() {
             
             <div style={{ marginTop: '20px', padding: '20px', background: 'rgba(15,23,42,0.6)', borderRadius: '12px', border: '1px dashed rgba(51,65,85,0.8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Total Invested</span>
-              <strong style={{ color: '#38bdf8', fontSize: '1.4rem' }}>₹{currentPortfolioValue.toLocaleString('en-IN')}</strong>
+              <strong style={{ color: '#38bdf8', fontSize: '1.4rem' }}>{formatMultiCurrencyTotals(portfolioTotals)}</strong>
             </div>
 
             {results && results.metrics.optimalWeights && (
@@ -362,9 +390,9 @@ export default function Simulator() {
                 <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                   <div style={{ fontSize: '0.85rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '10px' }}>Expected Median Value (p50)</div>
                   <div style={{ fontSize: '5rem', fontWeight: '900', color: '#fff', textShadow: '0 10px 30px rgba(56, 189, 248, 0.3)', lineHeight: '1' }}>
-                    ₹{m.netOfTaxValue ? m.netOfTaxValue.toLocaleString('en-IN', {maximumFractionDigits:0}) : m.estimatedValueReal.toLocaleString('en-IN', {maximumFractionDigits:0})}
+                    {formatPrice(m.netOfTaxValue || m.estimatedValueReal, primaryCurrency)}
                   </div>
-                  {m.estimatedTax > 0 && <div style={{ fontSize: '0.85rem', color: '#ef4444', marginTop: '10px' }}>Net of ₹{m.estimatedTax.toLocaleString('en-IN', {maximumFractionDigits:0})} LTCG Tax</div>}
+                  {m.estimatedTax > 0 && <div style={{ fontSize: '0.85rem', color: '#ef4444', marginTop: '10px' }}>Net of {formatPrice(m.estimatedTax, primaryCurrency)} LTCG Tax</div>}
                   {includeInflation && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '5px' }}>*Purchasing power adjusted for {inflationRate}% inflation</div>}
                 </div>
 
@@ -404,7 +432,7 @@ export default function Simulator() {
                 <div style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }} className="print-border-visible print-page-break">
                   <h4 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '1.1rem' }}>Monte Carlo Trajectory (Wealth Over Time)</h4>
                   <div style={{ width: '100%', height: '250px', position: 'relative' }}>
-                  <TrajectoryChart pathData={m.trajectoryPath} startValue={currentPortfolioValue} periodUnit={periodUnit} periodValue={periodValue} />
+                  <TrajectoryChart pathData={m.trajectoryPath} startValue={currentPortfolioValue} periodUnit={periodUnit} periodValue={periodValue} currency={primaryCurrency} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '15px', fontSize: '0.8rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{width:'10px', height:'3px', background:'#22c55e'}}></div> Bull (p90)</div>
@@ -425,11 +453,11 @@ export default function Simulator() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px' }}>
                   <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
                     <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>VaR (95%)</div>
-                    <div style={{ fontSize: '1.1rem', color: '#ef4444', fontWeight: 'bold' }}>-₹{m.VaR_95.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+                    <div style={{ fontSize: '1.1rem', color: '#ef4444', fontWeight: 'bold' }}>-{formatPrice(m.VaR_95, primaryCurrency)}</div>
                   </div>
                   <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
                     <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>CVaR (95%)</div>
-                    <div style={{ fontSize: '1.1rem', color: '#ef4444', fontWeight: 'bold' }}>-₹{m.CVaR_95.toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+                    <div style={{ fontSize: '1.1rem', color: '#ef4444', fontWeight: 'bold' }}>-{formatPrice(m.CVaR_95, primaryCurrency)}</div>
                   </div>
                   <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(51,65,85,0.5)' }}>
                     <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>Concentration (HHI)</div>
@@ -620,7 +648,7 @@ function CorrelationGrid({ corMat, assets }) {
   );
 }
 
-function TrajectoryChart({ pathData, startValue, periodUnit, periodValue }) {
+function TrajectoryChart({ pathData, startValue, periodUnit, periodValue, currency = 'USD' }) {
   if (!pathData || pathData.length === 0) return null;
 
   // ── Layout constants ──────────────────────────────────────────────────────
@@ -666,10 +694,7 @@ function TrajectoryChart({ pathData, startValue, periodUnit, periodValue }) {
 
   // ── Y-axis ticks (5 evenly spaced) ───────────────────────────────────────
   const formatMoney = (v) => {
-    if (v >= 1e7)  return `₹${(v/1e7).toFixed(1)}Cr`;
-    if (v >= 1e5)  return `₹${(v/1e5).toFixed(1)}L`;
-    if (v >= 1000) return `₹${(v/1000).toFixed(0)}K`;
-    return `₹${v.toFixed(0)}`;
+    return formatPriceCompact(v, currency || 'USD');
   };
   const Y_TICKS = 5;
   const yTicks = Array.from({ length: Y_TICKS + 1 }, (_, i) => minVal + (range * i) / Y_TICKS);
@@ -727,7 +752,7 @@ function TrajectoryChart({ pathData, startValue, periodUnit, periodValue }) {
         <text x={-innerH / 2} y={-58} textAnchor="middle"
           fill="#94a3b8" fontSize="12" fontFamily="Inter,sans-serif"
           transform="rotate(-90)">
-          Wealth (₹)
+          Wealth ({currencySymbol(currency || 'USD').trim()})
         </text>
 
         {/* ── Start baseline ── */}

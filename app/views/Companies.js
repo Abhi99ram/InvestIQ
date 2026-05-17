@@ -1,4 +1,5 @@
 'use client';
+import { formatPriceFromQuote, formatChange } from '../../lib/market';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import NewsFeed from '../components/NewsFeed';
 
@@ -243,10 +244,10 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '2.2rem', fontWeight: 800, transition: 'color 0.3s' }}>
-                  {quote.price?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  {formatPriceFromQuote(quote)}
                 </div>
                 <div className={`index-change ${isGain ? 'gain' : 'loss'}`} style={{ fontSize: '1.1rem' }}>
-                  {isGain ? '▲' : '▼'} {quote.change?.toFixed(2)} ({quote.changePercent?.toFixed(2)}%)
+                  {isGain ? '▲' : '▼'} {formatChange(quote.change, quote.changePercent, quote.currency)}
                 </div>
                 {lastUpdate && (
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>

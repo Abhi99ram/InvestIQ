@@ -1,4 +1,5 @@
 'use client';
+import { formatPrice, formatPriceFromQuote, resolveCurrency } from '../../lib/market';
 import { useState, useEffect, useCallback } from 'react';
 import { getAllSectorNames } from '../../lib/sectors';
 
@@ -101,7 +102,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
   useEffect(() => {
     const interval = setInterval(() => {
       if (watchlist.length) fetchWatchlistData(watchlist);
-    }, 10000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [watchlist]);
 
@@ -193,7 +194,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
         // 1. Send browser notification
         if ('Notification' in window && Notification.permission === 'granted') {
           const dirText = a.direction === 'above' ? 'above' : a.direction === 'below' ? 'below' : 'equal to';
-          new Notification(`🔔 ${a.symbol} Alert`, { body: `Price ${dirText} ${a.targetPrice} — now at ${price.toFixed(2)}` });
+          new Notification(`🔔 ${a.symbol} Alert`, { body: `Price ${dirText} ${a.targetPrice} — now at ${formatPrice(price, resolveCurrency(a.symbol, watchlistData[a.symbol]?.currency))}` });
         }
 
         // 2. Automatically trigger the Email/SMS Backend API
@@ -351,7 +352,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                       <td style={{ color: isInvalid ? 'var(--accent-red)' : 'var(--text-secondary)' }}>
                         {isInvalid ? 'Invalid Symbol' : (d.name || '-')}
                       </td>
-                      <td>{d.price?.toLocaleString(undefined, { maximumFractionDigits: 2 }) || '-'}</td>
+                      <td>{d.price != null ? formatPrice(d.price, resolveCurrency(sym, d.currency)) : '-'}</td>
                       <td className={isGain ? 'gain' : 'loss'}>{d.changePercent != null ? `${isGain ? '▲' : '▼'} ${d.changePercent.toFixed(2)}%` : '-'}</td>
                       <td style={{ color: 'var(--text-muted)' }}>{d.volume?.toLocaleString() || '-'}</td>
                       <td><button className="btn btn-sm" style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => removeStock(sym)}>✕</button></td>
@@ -482,7 +483,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                   )}
                   {alertSymbolPrice !== null && alertType === 'stock' && (
                     <div style={{ marginTop: 8, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                      Current Price: <strong style={{ color: 'var(--text-primary)' }}>₹{alertSymbolPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong>
+                      Current Price: <strong style={{ color: 'var(--text-primary)' }}>{formatPrice(alertSymbolPrice, resolveCurrency(alertSymbol))}</strong>
                     </div>
                   )}
                 </>

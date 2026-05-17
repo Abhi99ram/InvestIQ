@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
+import { resolveCurrency } from '../../../lib/market';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,7 @@ export async function GET(request) {
       symbol,
       period,
       interval: config.interval,
+      currency: resolveCurrency(symbol, result.meta?.currency),
       quotes: (result.quotes || []).map(q => ({
         date: q.date, open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume,
       })).filter(q => q.close != null),

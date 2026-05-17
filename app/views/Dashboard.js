@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { MAJOR_INDICES, SECTORS } from '../../lib/sectors';
+import { formatPrice, resolveCurrency } from '../../lib/market';
 import NewsFeed from '../components/NewsFeed';
 
 export default function Dashboard({ onSelectStock, onSelectSector }) {
@@ -27,25 +28,25 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
     const interval = setInterval(() => {
       fetchIndices();
       setLastUpdate(new Date().toLocaleTimeString('en-IN'));
-    }, 60000);
+    }, 15000);
     return () => clearInterval(interval);
   }, []);
 
   async function fetchIndices() {
     try {
       const symbols = MAJOR_INDICES.map(i => i.symbol).join(',');
-      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}`);
+      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}&_t=${Date.now()}`);
       const data = await res.json();
       setIndices(data);
     } catch (e) { console.error(e); }
     setLoading(false);
   }
 
-  const formatNum = (n, unit) => {
+  const formatNum = (n, unit, currency) => {
     if (n == null) return '-';
-    if (unit === '₹' || unit === 'USD/oz' || unit === 'USD/bbl') {
-      return n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-    }
+    if (currency) return formatPrice(n, currency);
+    if (unit === '₹' || unit === 'INR') return formatPrice(n, 'INR');
+    if (unit === 'USD/oz' || unit === 'USD/bbl') return formatPrice(n, 'USD');
     if (Math.abs(n) >= 1e12) return (n / 1e12).toFixed(2) + 'T';
     if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + 'B';
     if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + 'M';
@@ -89,7 +90,7 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 4 }}>{idx.exchange}</div>
         {loading
           ? <div className="skeleton" style={{ height: 28, width: '70%', marginBottom: 6 }} />
-          : <div className="index-value">{formatNum(d.price, idx.unit)}</div>
+          : <div className="index-value">{formatNum(d.price, idx.unit, d.currency || resolveCurrency(idx.symbol))}</div>
         }
         {!loading && (
           <div className={`index-change ${isGain ? 'gain' : 'loss'}`}>
