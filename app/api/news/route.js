@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { callAI } from '../../lib/ai-provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -467,40 +468,34 @@ function scoreRelevance(item, keywords) {
   return keywords.reduce((s, kw) => s + (text.includes(kw.toLowerCase()) ? (kw.length > 5 ? 2 : 1) : 0), 0);
 }
 
-// ── GROQ AI ANALYSIS for top articles ───────────────────────────────────────
+// ── AI ANALYSIS for top articles ───────────────────────────────────────
 async function enrichWithAI(articles) {
-  const groqKey = process.env.GROQ_API_KEY;
-  if (!groqKey || articles.length === 0) return articles;
+  if (articles.length === 0) return articles;
   try {
     const snippets = articles.slice(0, 15).map((a, i) =>
       `[${i}] "${a.title}" — ${a.description?.slice(0, 100) || ''}`
     ).join('\n');
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0.1,
-        max_tokens: 2000,
-        messages: [{
-          role: 'system',
-          content: `You are a financial market analyst. For each news item, output a JSON array with objects: {index, sentiment: "Bullish"|"Bearish"|"Neutral", impact: "High"|"Medium"|"Low", brief: "one sentence why this matters to markets/stocks/sectors"}. Only output the JSON array, nothing else.`
-        }, {
-          role: 'user',
-          content: `Analyze these market news items:\n${snippets}`
-        }]
-      })
-    });
-    if (!res.ok) return articles;
-    const data = await res.json();
-    const raw = data.choices?.[0]?.message?.content || '[]';
+    const res = await callAI([
+      {
+        role: 'system',
+        content: `You are a financial market analyst. For each news item, output a JSON array with objects: {index, sentiment: "Bullish"|"Bearish"|"Neutral", impact: "High"|"Medium"|"Low", brief: "one sentence why this matters to markets/stocks/sectors"}. Only output the JSON array, nothing else.`
+      }, {
+        role: 'user',
+        content: `Analyze these market news items:\n${snippets}`
+      }
+    ], { temperature: 0.1, max_tokens: 2000 });
+    
+    const raw = res.content || '[]';
     const analysis = JSON.parse(raw.match(/\[[\s\S]*\]/)?.[0] || '[]');
     return articles.map((a, i) => {
       const ai = analysis.find(x => x.index === i);
       return ai ? { ...a, sentiment: ai.sentiment, impact: ai.impact, brief: ai.brief } : a;
     });
-  } catch { return articles; }
+  } catch (e) { 
+    console.error('AI Enrichment error:', e.message);
+    return articles; 
+  }
 }
 
 // ── MAIN HANDLER ─────────────────────────────────────────────────────────────

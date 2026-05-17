@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { callAI } from '../../lib/ai-provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -143,70 +144,19 @@ export async function POST(request) {
       })),
     ];
 
-    // ── Try AI providers in order ─────────────────────────────────────────
-    const groqKey = process.env.GROQ_API_KEY;
-    const openaiKey = process.env.OPENAI_API_KEY;
-
-    // Try Groq (fast, free) first
-    if (groqKey) {
-      try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${groqKey}`,
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: formattedMessages,
-            temperature: 0.3,
-            max_tokens: 2048,   // Allow long, well-formatted responses
-            top_p: 0.9,
-            frequency_penalty: 0.1,
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          let reply = data.choices?.[0]?.message?.content || '';
-          if (reply.trim()) return NextResponse.json({ reply, provider: 'groq' });
-        }
-      } catch (e) {
-        console.error('[Chat] Groq error:', e.message);
-      }
+    // ── Try Multi-Provider AI Fallback ────────────────────────────────────
+    try {
+      const aiResponse = await callAI(formattedMessages, {
+        temperature: 0.3,
+        max_tokens: 2048
+      });
+      return NextResponse.json({ reply: aiResponse.content, provider: aiResponse.provider });
+    } catch (e) {
+      console.error('[Chat] All AI providers failed:', e.message);
+      return NextResponse.json({
+        reply: `⚠️ **AI Engine Unavailable**\n\nI couldn't connect to any AI provider right now. Please check your API keys (GROQ_API_KEY, OPENAI_API_KEY, TOGETHER_API_KEY) or you may be rate-limited.\n\n*Error details: ${e.message}*\n\n**Live Market Status:**\n${liveData ? '✅ Market data is live and available.' : '⚠️ Market data also unavailable.'}`,
+      });
     }
-
-    // Try OpenAI as fallback
-    if (openaiKey) {
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${openaiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: formattedMessages,
-            temperature: 0.3,
-            max_tokens: 2048,
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          let reply = data.choices?.[0]?.message?.content || '';
-          if (reply.trim()) return NextResponse.json({ reply, provider: 'openai' });
-        }
-      } catch (e) {
-        console.error('[Chat] OpenAI error:', e.message);
-      }
-    }
-
-    // No AI configured
-    return NextResponse.json({
-      reply: `⚠️ **AI Engine Unavailable**\n\nI couldn't connect to the AI brain right now. Please check your API keys (GROQ_API_KEY or OPENAI_API_KEY) in the environment settings.\n\n**Live Market Status:**\n${liveData ? '✅ Market data is live and available.' : '⚠️ Market data also unavailable.'}`,
-    });
 
   } catch (error) {
     console.error('Chat API Error:', error);

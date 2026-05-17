@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import YahooFinanceClass from 'yahoo-finance2';
 import * as math from 'mathjs';
 import { jStat } from 'jstat';
+import { callAI } from '../../lib/ai-provider';
 
 const yahooFinance = new YahooFinanceClass({ suppressNotices: ['yahooSurvey'] });
 
@@ -519,27 +520,17 @@ Produce ONLY a valid JSON object with the following exact keys:
   "allocationVerdict": "Well-diversified | Concentrated | Overweight growth | Imbalanced"
 }`;
 
-    const aiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1,
-        response_format: { type: "json_object" }
-      })
-    });
-
-    const aiData = await aiResponse.json();
-    if (aiData.error) throw new Error(`Groq API error: ${aiData.error.message || JSON.stringify(aiData.error)}`);
-
     let parsedResult;
     try {
-      parsedResult = JSON.parse(aiData.choices[0].message.content.trim());
-    } catch(e) { throw new Error("Invalid AI JSON"); }
+      const aiResponse = await callAI(
+        [{ role: 'user', content: prompt }],
+        { temperature: 0.1, response_format: { type: "json_object" } }
+      );
+      
+      parsedResult = JSON.parse(aiResponse.content);
+    } catch(e) { 
+      throw new Error(e.message); 
+    }
 
     return NextResponse.json({ metrics: metricsPayload, ai: parsedResult });
 
