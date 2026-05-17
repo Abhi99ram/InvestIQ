@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import YahooFinance from 'yahoo-finance2';
+import YahooFinanceClass from 'yahoo-finance2';
 import * as math from 'mathjs';
 import { jStat } from 'jstat';
+
+const yahooFinance = new YahooFinanceClass({ suppressNotices: ['yahooSurvey'] });
 
 const cache = new Map();
 const CACHE_TTL = 10 * 60 * 1000;
@@ -36,7 +38,7 @@ export async function POST(request) {
       macro = {};
       await Promise.all(macroSymbols.map(async (sym) => {
         try {
-          const q = await YahooFinance.quote(sym);
+          const q = await yahooFinance.quote(sym);
           macro[sym] = q.regularMarketPrice;
         } catch {
           macro[sym] = null;
@@ -73,9 +75,9 @@ export async function POST(request) {
       benchmarks = {};
       try {
         const [niftyHist, spxHist, goldHist] = await Promise.all([
-          YahooFinance.historical('^NSEI', { period1: period10Yr, interval: '1mo' }).catch(() => []),
-          YahooFinance.historical('^GSPC', { period1: period5Yr, interval: '1mo' }).catch(() => []),
-          YahooFinance.historical('GC=F', { period1: period5Yr, interval: '1mo' }).catch(() => [])
+          yahooFinance.historical('^NSEI', { period1: period10Yr, interval: '1mo' }).catch(() => []),
+          yahooFinance.historical('^GSPC', { period1: period5Yr, interval: '1mo' }).catch(() => []),
+          yahooFinance.historical('GC=F', { period1: period5Yr, interval: '1mo' }).catch(() => [])
         ]);
         benchmarks.nifty = niftyHist.map(h => h.close).filter(Boolean);
         benchmarks.spx = spxHist.map(h => h.close).filter(Boolean);
@@ -112,8 +114,8 @@ export async function POST(request) {
         let hist = [];
         try {
           [quote, hist] = await Promise.all([
-            YahooFinance.quote(p.symbol).catch(() => null),
-            YahooFinance.historical(p.symbol, { period1: fetchPeriod, interval: '1mo' }).catch(() => [])
+            yahooFinance.quote(p.symbol).catch(() => null),
+            yahooFinance.historical(p.symbol, { period1: fetchPeriod, interval: '1mo' }).catch(() => [])
           ]);
         } catch (e) {}
         
@@ -489,7 +491,7 @@ Produce ONLY a valid JSON object with the following exact keys:
 {
   "narrativeSummary": "3-4 sentence plain-language summary of the portfolio's situation",
   "topRisk": "the single biggest risk in 1 sentence",
-  "macroImpact": "how VIX and Yields are specifically affecting this portfolio",
+  "macroImpact": "how VIX, Yields, and USD/INR are specifically affecting this portfolio (crucially, evaluate Indian Yields/Data for Indian stocks, and consider USD/INR FX risk for foreign exposure)",
   "suggestions": [
     {
       "action": "Reduce Reliance Industries by 15%",
