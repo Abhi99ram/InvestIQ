@@ -564,7 +564,7 @@ function HeatmapBar({ data, groupKey, colors }) {
     <div>
       <div style={{ display: 'flex', width: '100%', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '15px' }}>
         {entries.map(([k, w], i) => (
-          <div key={k} style={{ width: \`\${w * 100}%\`, background: colors[i % colors.length], transition: 'width 0.5s ease' }} title={\`\${k}: \${(w*100).toFixed(1)}%\`}></div>
+          <div key={k} style={{ width: `${w * 100}%`, background: colors[i % colors.length], transition: 'width 0.5s ease' }} title={`${k}: ${(w*100).toFixed(1)}%`}></div>
         ))}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -584,31 +584,31 @@ function CorrelationGrid({ corMat, assets }) {
   const N = assets.length;
   
   const getColor = (r) => {
-    if (r >= 0) return \`rgba(34, 197, 94, \${Math.max(0.1, r * 0.8)})\`;
-    return \`rgba(239, 68, 68, \${Math.max(0.1, Math.abs(r) * 0.8)})\`;
+    if (r >= 0) return `rgba(34, 197, 94, ${Math.max(0.1, r * 0.8)})`;
+    return `rgba(239, 68, 68, ${Math.max(0.1, Math.abs(r) * 0.8)})`;
   };
 
   return (
     <div style={{ overflowX: 'auto', paddingBottom: '10px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: \`100px repeat(\${N}, 1fr)\`, gap: '4px', minWidth: \`\${N * 60 + 100}px\` }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `100px repeat(${N}, 1fr)`, gap: '4px', minWidth: `${N * 60 + 100}px` }}>
         {/* Header Row */}
         <div></div>
         {assets.map((a, i) => (
-          <div key={\`h-\${i}\`} style={{ fontSize: '0.7rem', color: '#94a3b8', textAlign: 'center', transform: 'rotate(-45deg)', transformOrigin: 'bottom center', height: '40px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div key={`h-${i}`} style={{ fontSize: '0.7rem', color: '#94a3b8', textAlign: 'center', transform: 'rotate(-45deg)', transformOrigin: 'bottom center', height: '40px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
             {a.symbol.split('.')[0]}
           </div>
         ))}
         
         {/* Matrix Rows */}
         {corMat.map((row, i) => (
-          <div key={\`r-\${i}\`} style={{ display: 'contents' }}>
+          <div key={`r-${i}`} style={{ display: 'contents' }}>
             <div style={{ fontSize: '0.75rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '10px' }}>
               {assets[i].symbol.split('.')[0]}
             </div>
             {row.map((val, j) => {
               const isSelf = i === j;
               return (
-                <div key={\`c-\${i}-\${j}\`} style={{ background: isSelf ? 'rgba(51,65,85,0.5)' : getColor(val), color: isSelf ? '#64748b' : '#fff', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '45px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }} title={\`\${assets[i].symbol} vs \${assets[j].symbol}: \${val.toFixed(2)}\`}>
+                <div key={`c-${i}-${j}`} style={{ background: isSelf ? 'rgba(51,65,85,0.5)' : getColor(val), color: isSelf ? '#64748b' : '#fff', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '45px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }} title={`${assets[i].symbol} vs ${assets[j].symbol}: ${val.toFixed(2)}`}>
                   {isSelf ? '-' : val.toFixed(2)}
                 </div>
               );
@@ -643,21 +643,21 @@ function TrajectoryChart({ pathData, startValue }) {
   const getX = (year) => (year / maxYear) * width;
   const getY = (val) => height - ((val - minVal) / (maxVal - minVal)) * height;
 
-  let d5 = \`M \${getX(pathData[0].year)} \${getY(pathData[0].p5)}\`;
-  let d50 = \`M \${getX(pathData[0].year)} \${getY(pathData[0].p50)}\`;
-  let d90 = \`M \${getX(pathData[0].year)} \${getY(pathData[0].p90)}\`;
+  let d5 = `M ${getX(pathData[0].year)} ${getY(pathData[0].p5)}`;
+  let d50 = `M ${getX(pathData[0].year)} ${getY(pathData[0].p50)}`;
+  let d90 = `M ${getX(pathData[0].year)} ${getY(pathData[0].p90)}`;
 
   pathData.forEach((d, i) => {
     if (i === 0) return;
-    d5 += \` L \${getX(d.year)} \${getY(d.p5)}\`;
-    d50 += \` L \${getX(d.year)} \${getY(d.p50)}\`;
-    d90 += \` L \${getX(d.year)} \${getY(d.p90)}\`;
+    d5 += ` L ${getX(d.year)} ${getY(d.p5)}`;
+    d50 += ` L ${getX(d.year)} ${getY(d.p50)}`;
+    d90 += ` L ${getX(d.year)} ${getY(d.p90)}`;
   });
 
   return (
-    <svg viewBox={\`0 0 \${width} \${height}\`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
       <line x1="0" y1={getY(startValue)} x2={width} y2={getY(startValue)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4,4" />
-      <path d={\`\${d90} \${pathData.slice().reverse().map(d => \`L \${getX(d.year)} \${getY(d.p5)}\`).join(' ')} Z\`} fill="rgba(56, 189, 248, 0.05)" />
+      <path d={`${d90} ${pathData.slice().reverse().map(d => `L ${getX(d.year)} ${getY(d.p5)}`).join(' ')} Z`} fill="rgba(56, 189, 248, 0.05)" />
       
       <path d={d5} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" vectorEffect="non-scaling-stroke" />
       <path d={d50} fill="none" stroke="#38bdf8" strokeWidth="3" vectorEffect="non-scaling-stroke" />

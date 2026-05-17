@@ -102,26 +102,26 @@ const CHAT_SUGGESTIONS = [
 function AnalysisCard({ icon, title, isBullish, trigger, metrics }) {
   const borderColor = isBullish ? '#10b981' : '#ef4444';
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderLeft: `4px solid ${borderColor}`, borderRadius: 12, padding: '14px 18px' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderLeft: `6px solid ${borderColor}`, borderRadius: 16, padding: '24px 30px' }}>
       {/* Title + badge */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: '1rem' }}>{icon}</span>
-        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#f1f5f9' }}>{title}</span>
-        <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.68rem', fontWeight: 700, background: isBullish ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: isBullish ? '#10b981' : '#ef4444', border: `1px solid ${isBullish ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <span style={{ fontSize: '1.4rem' }}>{icon}</span>
+        <span style={{ fontWeight: 800, fontSize: '1.3rem', color: '#f1f5f9' }}>{title}</span>
+        <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: '0.85rem', fontWeight: 700, background: isBullish ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: isBullish ? '#10b981' : '#ef4444', border: `1px solid ${isBullish ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
           {isBullish ? '▲ Bullish' : '▼ Bearish'}
         </span>
       </div>
       {/* Key metrics row */}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
         {metrics.map(m => (
           <div key={m.label}>
-            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginBottom: 1 }}>{m.label}</div>
-            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: m.color, fontFamily: 'monospace' }}>{m.value}</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 2 }}>{m.label}</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: m.color, fontFamily: 'monospace' }}>{m.value}</div>
           </div>
         ))}
       </div>
       {/* 1-2 line insight */}
-      <div style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.55, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 8 }}>
+      <div style={{ fontSize: '1rem', color: '#94a3b8', lineHeight: 1.6, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
         {trigger}
       </div>
     </div>

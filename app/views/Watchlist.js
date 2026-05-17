@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { getAllSectorNames } from '../../lib/sectors';
 
 export default function Watchlist({ onSelectStock, setNotifCount, user }) {
   const [watchlist, setWatchlist] = useState([]);
@@ -62,13 +63,18 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
     }
   };
 
-  const handleSearch = useCallback(async (q, setter) => {
+  const handleSearch = useCallback(async (q, setter, isNews = false) => {
     setter(q);
     if (q.length < 2) { setSearchResults([]); setShowSearch(false); return; }
     try {
+      let extraSectors = [];
+      if (isNews) {
+        const allSectors = getAllSectorNames();
+        extraSectors = allSectors.filter(s => s.toLowerCase().includes(q.toLowerCase())).map(s => ({ symbol: s, name: 'Sector', exchange: 'Macro' }));
+      }
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
       const data = await res.json();
-      setSearchResults(data.results || []);
+      setSearchResults([...extraSectors, ...(data.results || [])]);
       setShowSearch(true);
     } catch { setSearchResults([]); }
   }, []);
@@ -460,7 +466,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
               <label className="form-label">{alertType === 'stock' ? 'Stock Symbol' : alertType === 'sector' ? 'Sector Name' : 'Company/Sector Name'}</label>
               {(alertType === 'stock' || alertType === 'news') ? (
                 <>
-                  <input className="form-input" value={alertSymbol} onChange={e => handleSearch(e.target.value, setAlertSymbol)} 
+                  <input className="form-input" value={alertSymbol} onChange={e => handleSearch(e.target.value, setAlertSymbol, alertType === 'news')} 
                     onFocus={() => searchResults.length > 0 && setShowSearch(true)}
                     onBlur={() => setTimeout(() => setShowSearch(false), 200)}
                     placeholder={alertType === 'news' ? 'e.g. Reliance, Banking' : 'e.g. RELIANCE.NS'} />
@@ -481,7 +487,33 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                   )}
                 </>
               ) : (
-                <input className="form-input" value={alertSymbol} onChange={e => setAlertSymbol(e.target.value)} placeholder="e.g. Banking" />
+                <>
+                  <input className="form-input" value={alertSymbol} onChange={e => {
+                    setAlertSymbol(e.target.value);
+                    const v = e.target.value;
+                    if (v.length >= 1) {
+                      const allSectors = getAllSectorNames();
+                      const matchingSectors = allSectors.filter(s => s.toLowerCase().includes(v.toLowerCase())).map(s => ({ symbol: s }));
+                      setSearchResults(matchingSectors);
+                      setShowSearch(true);
+                    } else {
+                      setSearchResults([]);
+                      setShowSearch(false);
+                    }
+                  }} 
+                    onFocus={() => searchResults.length > 0 && setShowSearch(true)}
+                    onBlur={() => setTimeout(() => setShowSearch(false), 200)}
+                    placeholder="e.g. Banking, IT" />
+                  {showSearch && searchResults.length > 0 && alertSymbol.length >= 1 && (
+                    <div className="search-results" style={{ top: '100%', zIndex: 100 }}>
+                      {searchResults.map((r, i) => (
+                        <div key={i} className="search-result-item" onMouseDown={() => { setAlertSymbol(r.symbol); setShowSearch(false); }}>
+                          <div><strong>{r.symbol}</strong></div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
             {alertType !== 'news' && (
