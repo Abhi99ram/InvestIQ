@@ -41,10 +41,14 @@ export default function Home() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateVersion, setUpdateVersion] = useState(null);
 
-  // Load user from localStorage on mount
+  // Load user from localStorage on mount (safe parse — corrupt data must not crash the app)
   useEffect(() => {
-    const savedUser = localStorage.getItem('investiq_user');
-    if (savedUser) setUser(JSON.parse(savedUser));
+    try {
+      const savedUser = localStorage.getItem('investiq_user');
+      if (savedUser) setUser(JSON.parse(savedUser));
+    } catch {
+      localStorage.removeItem('investiq_user');
+    }
   }, []);
 
   // Poll for system updates (runs on all installed devices: Android, iOS, PC desktop)

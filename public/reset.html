@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>InvestIQ — Reset</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #020617; color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; text-align: center; }
+    button { margin-top: 20px; padding: 14px 28px; border-radius: 10px; border: none; background: #38bdf8; color: #0f172a; font-weight: 700; font-size: 1rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>Resetting InvestIQ…</h1>
+    <p>Clearing old app cache and service workers, then opening the site.</p>
+    <button type="button" id="go">Open InvestIQ</button>
+  </div>
+  <script>
+    (async function () {
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(function (r) { return r.unregister(); }));
+        }
+        if (window.caches && caches.keys) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        }
+      } catch (e) {}
+      document.getElementById('go').onclick = function () {
+        window.location.href = '/?reset=' + Date.now();
+      };
+      setTimeout(function () { window.location.href = '/?reset=' + Date.now(); }, 1500);
+    })();
+  </script>
+</body>
+</html>

@@ -125,21 +125,10 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
         const permission = await Notification.requestPermission();
         setNotifPermission(permission);
         if (permission === 'granted') {
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(reg => {
-              reg.showNotification('🔔 InvestIQ Alerts Enabled!', {
-                body: 'You will now receive real-time updates, price alerts, and news digests instantly.',
-                icon: '/icon-192.png',
-                badge: '/icon-192.png',
-                vibrate: [100, 50, 100]
-              });
-            });
-          } else {
-            new Notification('🔔 InvestIQ Alerts Enabled!', {
-              body: 'You will now receive real-time updates, price alerts, and news digests instantly.',
-              icon: '/icon-192.png'
-            });
-          }
+          new Notification('🔔 InvestIQ Alerts Enabled!', {
+            body: 'You will now receive real-time updates, price alerts, and news digests instantly.',
+            icon: '/icon-192.png',
+          });
         } else if (permission === 'denied') {
           alert('🔔 Notification permission was blocked. To receive price alerts on your mobile device, please go to settings -> Apps -> Chrome / InvestIQ, and enable Notifications permission.');
         }
