@@ -91,7 +91,7 @@ export async function POST(request) {
       let prices = getCached(cacheKey);
       if (!prices) {
         try {
-          const hist = await yahooFinance.historical(bmSym, { period1: period10Yr, interval: '1mo' }).catch(() => []);
+          const hist = await yahooFinance.chart(bmSym, { period1: period10Yr, interval: '1mo' }).then(r => r.quotes || []).catch(() => []);
           prices = hist.map(h => h.close).filter(Boolean);
           if (prices.length > 0) setCache(cacheKey, prices);
         } catch(e) { prices = []; }
@@ -121,7 +121,7 @@ export async function POST(request) {
         try {
           [quote, hist] = await Promise.all([
             yahooFinance.quote(p.symbol).catch(() => null),
-            yahooFinance.historical(p.symbol, { period1: fetchPeriod, interval: '1mo' }).catch(() => [])
+            yahooFinance.chart(p.symbol, { period1: fetchPeriod, interval: '1mo' }).then(r => r.quotes || []).catch(() => [])
           ]);
         } catch (e) {}
         
