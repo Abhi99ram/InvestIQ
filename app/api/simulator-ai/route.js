@@ -70,35 +70,41 @@ export async function POST(request) {
     fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
     const period5Yr = fiveYearsAgo.toISOString().split('T')[0];
 
-    let benchmarks = getCached('BENCHMARKS');
-    if (!benchmarks) {
-      benchmarks = {};
-      try {
-        const [niftyHist, spxHist, goldHist] = await Promise.all([
-          yahooFinance.historical('^NSEI', { period1: period10Yr, interval: '1mo' }).catch(() => []),
-          yahooFinance.historical('^GSPC', { period1: period5Yr, interval: '1mo' }).catch(() => []),
-          yahooFinance.historical('GC=F', { period1: period5Yr, interval: '1mo' }).catch(() => [])
-        ]);
-        benchmarks.nifty = niftyHist.map(h => h.close).filter(Boolean);
-        benchmarks.spx = spxHist.map(h => h.close).filter(Boolean);
-        benchmarks.gold = goldHist.map(h => h.close).filter(Boolean);
-        setCache('BENCHMARKS', benchmarks);
-      } catch (e) {
-        benchmarks = { nifty: [], spx: [], gold: [] };
-      }
-    }
-
-    const getReturns = (prices) => {
-      let rets = [];
-      for(let i=1; i<prices.length; i++) {
-        rets.push((prices[i] - prices[i-1]) / prices[i-1]);
-      }
-      return rets;
+    const getBenchmarkSymbol = (symbol) => {
+      if (symbol.includes('=F')) return 'GC=F';
+      if (symbol.endsWith('.NS') || symbol.endsWith('.BO') || symbol === '^NSEI' || symbol === '^BSESN') return '^NSEI';
+      if (symbol.endsWith('.L')) return '^FTSE';
+      if (symbol.endsWith('.AX')) return '^AXJO';
+      if (symbol.endsWith('.TO')) return '^GSPTSE';
+      if (symbol.endsWith('.T')) return '^N225';
+      if (symbol.endsWith('.HK')) return '^HSI';
+      if (symbol.endsWith('.DE')) return '^GDAXI';
+      if (symbol.endsWith('.PA')) return '^FCHI';
+      return '^GSPC';
     };
 
-    const niftyReturns = getReturns(benchmarks.nifty);
-    const spxReturns = getReturns(benchmarks.spx);
-    const goldReturns = getReturns(benchmarks.gold);
+    const uniqueBenchmarks = [...new Set(portfolio.map(p => getBenchmarkSymbol(p.symbol)))];
+    const benchmarkReturns = {};
+
+    await Promise.all(uniqueBenchmarks.map(async (bmSym) => {
+      const cacheKey = `BENCHMARK_${bmSym}`;
+      let prices = getCached(cacheKey);
+      if (!prices) {
+        try {
+          const hist = await yahooFinance.historical(bmSym, { period1: period10Yr, interval: '1mo' }).catch(() => []);
+          prices = hist.map(h => h.close).filter(Boolean);
+          if (prices.length > 0) setCache(cacheKey, prices);
+        } catch(e) { prices = []; }
+      }
+      
+      let rets = [];
+      if (prices) {
+        for(let i=1; i<prices.length; i++) {
+          rets.push((prices[i] - prices[i-1]) / prices[i-1]);
+        }
+      }
+      benchmarkReturns[bmSym] = rets;
+    }));
 
     const assetData = [];
     await Promise.all(portfolio.map(async (p) => {
@@ -125,7 +131,11 @@ export async function POST(request) {
 
       const q = data.quote || {};
       const histPrices = data.hist.map(h => h.close).filter(Boolean);
-      const rets = getReturns(histPrices);
+      
+      let rets = [];
+      for(let i=1; i<histPrices.length; i++) {
+        rets.push((histPrices[i] - histPrices[i-1]) / histPrices[i-1]);
+      }
       
       const price = q.regularMarketPrice || p.price;
       const weight = (p.shares * price) / totalInvested;
@@ -144,9 +154,8 @@ export async function POST(request) {
       }
       const stdDevAnnual = stdDevMonthly * Math.sqrt(12);
       
-      let benchRets = spxReturns;
-      if (isIndian) benchRets = niftyReturns;
-      else if (isMetal) benchRets = goldReturns;
+      const bmSym = getBenchmarkSymbol(p.symbol);
+      let benchRets = benchmarkReturns[bmSym] || [];
       
       let beta = q.beta || 1.0;
       if (rets.length > 0 && benchRets.length > 0) {
