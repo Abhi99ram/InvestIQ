@@ -309,73 +309,86 @@ export async function POST(request) {
     const crisisTerminalValues = new Float32Array(M_PATHS); // Parallel full-crisis run for deterministic testing
     const tDistScale = Math.sqrt(3 / 5);
     
-    const pathTracking = []; 
-    const yearlySnapshots = [];
-    for(let i=0; i<=Math.ceil(T_years); i++) yearlySnapshots.push(new Float32Array(M_PATHS));
+    // Build trajectory snapshots at each yearly interval (or final step)
+    // We always produce at least 2 data points: year 0 (start) and year N (end)
+    // For sub-1-year horizons we still show start -> end spread.
+    const snapshotYears = [];
+    for (let y = 0; y <= Math.ceil(T_years); y++) {
+      snapshotYears.push(Math.min(y, T_years));
+    }
+    // Map year index → which month step captures it
+    const snapshotSteps = snapshotYears.map(y => Math.min(Math.round(y * 12), T_steps));
 
-    for(let p = 0; p < M_PATHS; p++) {
+    // yearlySnapshots[snapIdx][pathIdx] = portfolio value
+    const yearlySnapshots = snapshotYears.map(() => new Float32Array(M_PATHS));
+
+    for (let p = 0; p < M_PATHS; p++) {
       let currentVal = totalInvested;
       let crisisVal = totalInvested;
       let currentWeights = assetData.map(a => a.weight);
-      
+
+      // year 0 always = starting value
       yearlySnapshots[0][p] = totalInvested;
 
-      for(let t = 0; t < T_steps; t++) {
-        if (t > 0 && t % 12 === 0) {
+      let snapIdx = 1; // next snapshot to fill
+
+      for (let t = 1; t <= T_steps; t++) {
+        // rebalance annually
+        if (t % 12 === 0) {
           currentWeights = assetData.map(a => a.targetWeight);
-          yearlySnapshots[Math.floor(t/12)][p] = currentVal;
         }
 
         const T_draws = Array(N).fill(0).map(() => jStat.studentt.inv(Math.random(), 5) * tDistScale);
-        
+
         let portRetMonth = 0;
         let crisisRetMonth = 0;
-        
-        // UPGRADE 4: Regime-Switching Monte Carlo
-        // At every month, there is a 2% chance the market enters a synchronized crash regime.
         const isCrashRegime = Math.random() < 0.02;
         const activeL = isCrashRegime ? L_crisis : L_normal;
-        
-        for(let i=0; i<N; i++) {
+
+        for (let i = 0; i < N; i++) {
           let corrZ = 0;
-          let corrZCrisis = 0; // Pure crisis for the parallel deterministic track
-          for(let j=0; j<=i; j++) {
+          let corrZCrisis = 0;
+          for (let j = 0; j <= i; j++) {
             corrZ += activeL[i][j] * T_draws[j];
             corrZCrisis += L_crisis[i][j] * T_draws[j];
           }
-          
           let expectedRet = assetData[i].expectedReturnMonthly;
-          
-          // If in a crash regime, subtract 1.5 standard deviations from the monthly return
           let regimeAdjustedRet = isCrashRegime ? (expectedRet - (1.5 * assetData[i].stdDevMonthly)) : expectedRet;
-          
-          let ret = regimeAdjustedRet + corrZ;
-          let retCrisis = (expectedRet - (1.5 * assetData[i].stdDevMonthly)) + corrZCrisis;
-          
-          portRetMonth += currentWeights[i] * ret;
-          crisisRetMonth += currentWeights[i] * retCrisis;
+          portRetMonth += currentWeights[i] * (regimeAdjustedRet + corrZ);
+          crisisRetMonth += currentWeights[i] * ((expectedRet - (1.5 * assetData[i].stdDevMonthly)) + corrZCrisis);
         }
-        
+
         currentVal *= (1 + portRetMonth);
         crisisVal *= (1 + crisisRetMonth);
+
+        // capture snapshot when we hit a snapshot step
+        if (snapIdx < snapshotSteps.length && t === snapshotSteps[snapIdx]) {
+          yearlySnapshots[snapIdx][p] = currentVal;
+          snapIdx++;
+        }
       }
+
+      // fill any remaining unfilled snapshots (shouldn't happen but defensive)
+      while (snapIdx < snapshotYears.length) {
+        yearlySnapshots[snapIdx][p] = currentVal;
+        snapIdx++;
+      }
+
       terminalValues[p] = currentVal;
       crisisTerminalValues[p] = crisisVal;
-      
-      if (T_steps % 12 !== 0 || T_years < 1) {
-        yearlySnapshots[yearlySnapshots.length - 1][p] = currentVal;
-      }
     }
 
     const trajectoryPath = [];
-    for(let y=0; y<yearlySnapshots.length; y++) {
-      let snapshot = yearlySnapshots[y];
-      snapshot.sort();
+    for (let y = 0; y < snapshotYears.length; y++) {
+      const snapshot = yearlySnapshots[y].slice().sort((a, b) => a - b);
+      const p5v  = snapshot[Math.floor(0.05 * M_PATHS)] || totalInvested;
+      const p50v = snapshot[Math.floor(0.50 * M_PATHS)] || totalInvested;
+      const p90v = snapshot[Math.floor(0.90 * M_PATHS)] || totalInvested;
       trajectoryPath.push({
-        year: y,
-        p5: snapshot[Math.floor(0.05 * M_PATHS)] || totalInvested,
-        p50: snapshot[Math.floor(0.50 * M_PATHS)] || totalInvested,
-        p90: snapshot[Math.floor(0.90 * M_PATHS)] || totalInvested
+        year: snapshotYears[y],
+        p5: p5v,
+        p50: p50v,
+        p90: p90v
       });
     }
 
