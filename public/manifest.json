@@ -1,0 +1,44 @@
+{
+  "name": "InvestIQ AI — Financial Intelligence",
+  "short_name": "InvestIQ",
+  "description": "Real-time market intelligence, AI-powered stock analysis, and portfolio simulation for Indian & global markets.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en-IN",
+  "categories": ["finance", "business"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Market Dashboard",
+      "short_name": "Dashboard",
+      "description": "Live market overview",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Portfolio Simulator",
+      "short_name": "Simulator",
+      "description": "AI Monte Carlo portfolio simulation",
+      "url": "/?page=simulator",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

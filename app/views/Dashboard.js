@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MAJOR_INDICES, SECTORS } from '../../lib/sectors';
 import NewsFeed from '../components/NewsFeed';
 
@@ -7,6 +7,19 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
   const [indices, setIndices] = useState({});
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState('');
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const [activeInstallTab, setActiveInstallTab] = useState('android');
+
+  useEffect(() => {
+    // Capture PWA install prompt (Android/Desktop Chrome)
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler);
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) setIsInstalled(true);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   useEffect(() => {
     setLastUpdate(new Date().toLocaleTimeString('en-IN'));
@@ -165,6 +178,225 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
           <button className="btn btn-primary" onClick={() => onSelectStock('TCS.NS')}>View TCS</button>
         </div>
       </div>
+
+      {/* ── GET THE APP CARD ─────────────────────────────────────────────── */}
+      {!isInstalled && (
+        <div style={{
+          marginTop: 32,
+          background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(7,15,35,0.98) 100%)',
+          border: '1px solid rgba(56,189,248,0.25)',
+          borderRadius: 24,
+          padding: '32px 36px',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 0 60px -15px rgba(56,189,248,0.15)',
+        }}>
+          {/* Glow blob */}
+          <div style={{ position:'absolute', top:-60, right:-60, width:220, height:220, borderRadius:'50%', background:'radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%)', pointerEvents:'none' }} />
+          <div style={{ position:'absolute', bottom:-40, left:80, width:160, height:160, borderRadius:'50%', background:'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%)', pointerEvents:'none' }} />
+
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:20 }}>
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
+                <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#0ea5e9,#22c55e)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>📱</div>
+                <div>
+                  <h2 style={{ margin:0, color:'#fff', fontSize:'1.3rem', fontWeight:700 }}>Get InvestIQ on Your Device</h2>
+                  <p style={{ margin:0, color:'#64748b', fontSize:'0.85rem' }}>Install as an app — works offline, auto-updates instantly</p>
+                </div>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
+                {['⚡ Instant updates','📴 Works offline','🔔 Price alerts','📊 Full access'].map(f => (
+                  <span key={f} style={{ fontSize:'0.72rem', color:'#38bdf8', background:'rgba(56,189,248,0.1)', border:'1px solid rgba(56,189,248,0.2)', borderRadius:20, padding:'3px 10px' }}>{f}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* 3 Platform Buttons */}
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+              <PlatformButton
+                icon="🤖"
+                label="Android"
+                sub="Phone & Tablet"
+                color="#22c55e"
+                onClick={() => { setActiveInstallTab('android'); setShowInstallModal(true); }}
+                installPrompt={installPrompt}
+              />
+              <PlatformButton
+                icon=""
+                label="iPhone / iPad"
+                sub="iOS & iPadOS"
+                color="#38bdf8"
+                onClick={() => { setActiveInstallTab('ios'); setShowInstallModal(true); }}
+              />
+              <PlatformButton
+                icon="🖥️"
+                label="Desktop"
+                sub="Windows & Mac"
+                color="#a855f7"
+                onClick={() => { setActiveInstallTab('desktop'); setShowInstallModal(true); }}
+                installPrompt={installPrompt}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── INSTALL MODAL ─────────────────────────────────────────────────── */}
+      {showInstallModal && (
+        <InstallModal
+          tab={activeInstallTab}
+          setTab={setActiveInstallTab}
+          installPrompt={installPrompt}
+          onInstall={async () => {
+            if (installPrompt) {
+              installPrompt.prompt();
+              const { outcome } = await installPrompt.userChoice;
+              if (outcome === 'accepted') { setIsInstalled(true); setShowInstallModal(false); }
+            }
+          }}
+          onClose={() => setShowInstallModal(false)}
+        />
+      )}
     </div>
   );
 }
+
+/* ── Sub-components ─────────────────────────────────────────────────────────── */
+
+function PlatformButton({ icon, label, sub, color, onClick }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov ? `rgba(${color === '#22c55e' ? '34,197,94' : color === '#38bdf8' ? '56,189,248' : '168,85,247'},0.15)` : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${hov ? color : 'rgba(255,255,255,0.1)'}`,
+        borderRadius: 16,
+        padding: '14px 20px',
+        cursor: 'pointer',
+        textAlign: 'center',
+        minWidth: 130,
+        transition: 'all 0.2s ease',
+        transform: hov ? 'translateY(-2px)' : 'none',
+        boxShadow: hov ? `0 8px 24px -8px ${color}44` : 'none',
+      }}
+    >
+      <div style={{ fontSize: 28, marginBottom: 4 }}>{icon}</div>
+      <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem', fontFamily: 'Inter,sans-serif' }}>{label}</div>
+      <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: 2 }}>{sub}</div>
+    </button>
+  );
+}
+
+function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
+  const tabs = [
+    { id: 'android', label: '🤖 Android', color: '#22c55e' },
+    { id: 'ios',     label: ' iOS / iPad', color: '#38bdf8' },
+    { id: 'desktop', label: '🖥️ Desktop',  color: '#a855f7' },
+  ];
+
+  const instructions = {
+    android: {
+      title: 'Install on Android Phone or Tablet',
+      color: '#22c55e',
+      steps: [
+        { icon: '🌐', text: 'Open investiq-green.vercel.app in Chrome on your Android device' },
+        { icon: '⋮',  text: 'Tap the 3-dot menu (⋮) in the top-right corner of Chrome' },
+        { icon: '📲', text: 'Tap "Add to Home screen" or "Install app"' },
+        { icon: '✅', text: 'Tap "Install" — InvestIQ appears on your home screen like a native app!' },
+      ],
+      note: 'Works on all Android phones and tablets (Samsung, OnePlus, Pixel, etc.)',
+      autoInstall: true,
+    },
+    ios: {
+      title: 'Install on iPhone or iPad',
+      color: '#38bdf8',
+      steps: [
+        { icon: '🌐', text: 'Open investiq-green.vercel.app in Safari on your iPhone or iPad' },
+        { icon: '⬆️', text: 'Tap the Share button (box with arrow) at the bottom of Safari' },
+        { icon: '📲', text: 'Scroll down and tap "Add to Home Screen"' },
+        { icon: '✅', text: 'Tap "Add" — InvestIQ appears on your home screen like a native app!' },
+      ],
+      note: '⚠️ Must use Safari browser (not Chrome) on iOS for home screen install',
+      autoInstall: false,
+    },
+    desktop: {
+      title: 'Install on Windows or Mac',
+      color: '#a855f7',
+      steps: [
+        { icon: '🌐', text: 'Open investiq-green.vercel.app in Chrome or Edge on your computer' },
+        { icon: '📥', text: 'Click the install icon (⊕) in the address bar, or open the browser menu (⋮)' },
+        { icon: '📲', text: 'Click "Install InvestIQ" or "Add to Desktop"' },
+        { icon: '✅', text: 'Click "Install" — InvestIQ opens in its own window like a desktop app!' },
+      ],
+      note: 'Works on Windows 10/11, macOS, and Chromebooks via Chrome or Edge',
+      autoInstall: true,
+    },
+  };
+
+  const active = instructions[tab];
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', backdropFilter:'blur(8px)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background:'linear-gradient(135deg,rgba(15,23,42,0.99),rgba(2,6,23,0.99))', border:'1px solid rgba(255,255,255,0.12)', borderRadius:28, padding:40, maxWidth:520, width:'100%', position:'relative', boxShadow:'0 40px 80px -20px rgba(0,0,0,0.8)' }}>
+        {/* Close */}
+        <button onClick={onClose} style={{ position:'absolute', top:16, right:16, background:'rgba(255,255,255,0.08)', border:'none', borderRadius:8, width:32, height:32, color:'#94a3b8', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+
+        <h3 style={{ margin:'0 0 24px', color:'#fff', fontSize:'1.2rem', fontWeight:700 }}>📱 Install InvestIQ</h3>
+
+        {/* Tabs */}
+        <div style={{ display:'flex', gap:8, marginBottom:28, background:'rgba(255,255,255,0.04)', borderRadius:12, padding:4 }}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              flex:1, padding:'8px 0', borderRadius:9, border:'none', cursor:'pointer', fontSize:'0.78rem', fontWeight:600,
+              background: tab === t.id ? t.color + '22' : 'transparent',
+              color: tab === t.id ? t.color : '#64748b',
+              outline: tab === t.id ? `1px solid ${t.color}55` : 'none',
+              transition: 'all 0.2s',
+            }}>{t.label}</button>
+          ))}
+        </div>
+
+        <h4 style={{ margin:'0 0 20px', color:active.color, fontSize:'1rem', fontWeight:600 }}>{active.title}</h4>
+
+        {/* Steps */}
+        <div style={{ display:'flex', flexDirection:'column', gap:14, marginBottom:24 }}>
+          {active.steps.map((s, i) => (
+            <div key={i} style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:`${active.color}18`, border:`1px solid ${active.color}33`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>{s.icon}</div>
+              <div style={{ paddingTop:8, color:'#cbd5e1', fontSize:'0.88rem', lineHeight:1.5 }}>
+                <strong style={{ color:'#e2e8f0' }}>Step {i + 1}:</strong> {s.text}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Note */}
+        <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, padding:'12px 16px', marginBottom:24, fontSize:'0.8rem', color:'#94a3b8' }}>
+          💡 {active.note}
+        </div>
+
+        {/* Auto-install button for Android/Desktop */}
+        {active.autoInstall && installPrompt && (
+          <button onClick={onInstall} style={{
+            width:'100%', padding:'14px', borderRadius:14, border:'none', cursor:'pointer', fontWeight:700, fontSize:'1rem',
+            background:`linear-gradient(135deg, ${active.color}, ${active.color}bb)`,
+            color:'#000', boxShadow:`0 8px 24px -8px ${active.color}66`,
+            transition:'all 0.2s',
+          }}>
+            ⚡ Install Now — One Click
+          </button>
+        )}
+
+        {/* Auto-update notice */}
+        <div style={{ marginTop:16, textAlign:'center', fontSize:'0.75rem', color:'#475569' }}>
+          🔄 Updates are <strong style={{color:'#22c55e'}}>automatic</strong> — every improvement is pushed instantly to all your devices
+        </div>
+      </div>
+    </div>
+  );
+}
+
