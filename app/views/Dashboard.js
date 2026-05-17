@@ -352,116 +352,77 @@ function PlatformButton({ icon, label, sub, color, onClick }) {
 }
 
 function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
-  const [packProgress, setPackProgress] = useState(-1); // -1 = idle
-  const [packLogs, setPackLogs] = useState([]);
-  const logInterval = useRef(null);
-
   const tabs = [
     { id: 'android', label: '🤖 Android', color: '#22c55e' },
     { id: 'ios',     label: '🍎 iOS & iPad', color: '#38bdf8' },
     { id: 'desktop', label: '🖥️ Desktop PC',  color: '#a855f7' },
-    { id: 'tablet',  label: '📐 Tablet Exclusive', color: '#ec4899' },
+    { id: 'appstores', label: '📦 App Stores Publish', color: '#ec4899' },
   ];
 
-  const handleDownload = (platform, filename) => {
-    setPackProgress(0);
-    setPackLogs(['[1/5] Initializing InvestIQ Native Wrapper...']);
-    
-    let step = 0;
-    const steps = [
-      '[2/5] Compiling High-Definition assets & layout files...',
-      '[3/5] Setting up offline database & service worker bridge...',
-      '[4/5] Securing app packages with SSL & Vercel credentials...',
-      '[5/5] Finalizing native bundle for high-precision charting...',
-      '🚀 Packaging Complete! Initializing download...'
-    ];
-
-    if (logInterval.current) clearInterval(logInterval.current);
-
-    logInterval.current = setInterval(() => {
-      step++;
-      if (step <= 4) {
-        setPackProgress(step * 20);
-        setPackLogs(prev => [...prev, steps[step - 1]]);
-      } else {
-        setPackProgress(100);
-        setPackLogs(prev => [...prev, steps[4]]);
-        clearInterval(logInterval.current);
-
-        // Download actual shortcut/installer wrapper file from the public/downloads directory
-        setTimeout(() => {
-          const link = document.createElement('a');
-          link.href = `/downloads/${filename}`;
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          // Reset progress after a short delay
-          setTimeout(() => {
-            setPackProgress(-1);
-            setPackLogs([]);
-          }, 3000);
-        }, 1000);
+  const handleNativeInstall = async () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      if (outcome === 'accepted') {
+        alert('🎉 Installation Accepted! InvestIQ is now installing to your system.');
+        onClose();
       }
-    }, 800);
+    } else {
+      alert('💡 To install directly: Open this site in Google Chrome or Microsoft Edge, click the 3-dot menu and select "Install app".\nNo files to run or download!');
+    }
   };
-
 
   const instructions = {
     android: {
-      title: 'Download & Install for Android devices',
+      title: 'Direct Android Installation (Phones & Tablets)',
       color: '#22c55e',
-      desc: 'Get the native app bundle for any Android phone or tablet. Fast, offline-first, with push notification support.',
+      desc: 'No APK files to download or run manually. Install InvestIQ directly from your mobile browser with one tap. Supports full-screen mode and automatic updates.',
       options: [
-        { label: '📱 Download Android Phone App (.apk)', filename: 'investiq-mobile.apk', action: () => handleDownload('Android Mobile', 'investiq-mobile.apk') },
-        { label: '📐 Download Android Tablet HD App (.apk)', filename: 'investiq-tablet-hd.apk', action: () => handleDownload('Android Tablet', 'investiq-tablet-hd.apk') },
+        { label: '⚡ Direct Install to Device (One-Click)', action: handleNativeInstall },
       ],
       steps: [
-        { icon: '📥', text: 'Click a download link above to fetch the apk package' },
-        { icon: '⚙️', text: 'Allow installation from Unknown Sources if prompted' },
-        { icon: '✅', text: 'Open the file to install — updates are automatically pushed silently' }
+        { icon: '🌐', text: 'Open Chrome or Samsung Internet on your phone/tablet' },
+        { icon: '📲', text: 'Click the "Direct Install" button above or select "Install App" in Chrome menu' },
+        { icon: '✅', text: 'The app icon appears on your home screen instantly — runs like a native app!' }
       ]
     },
     ios: {
-      title: 'Install for iPhone & iPad App',
+      title: 'Direct iPhone & iPad Installation',
       color: '#38bdf8',
-      desc: 'Optimized perfectly for iOS 16.4+ and iPadOS. Experience full-screen native desktop-grade feel.',
+      desc: 'Apple requires Safari for direct home screen installation. Once added, it runs in borderless high-definition mode, supports native push alerts, and auto-updates dynamically.',
       options: [
-        { label: '🍏 Download iPhone App (App Store Link)', filename: 'investiq-iphone.mobileconfig', action: () => handleDownload('iOS Phone', 'investiq-iphone.mobileconfig') },
-        { label: '📐 Download iPad Exclusive App (App Store HD Link)', filename: 'investiq-ipad-hd.mobileconfig', action: () => handleDownload('iPadOS Tablet', 'investiq-ipad-hd.mobileconfig') },
+        { label: '🍏 Click Safari Share Menu', action: () => alert('iOS Direct Install:\n1. Tap the Share button at the bottom of Safari\n2. Select "Add to Home Screen"\n3. No downloads or files required!') },
       ],
       steps: [
-        { icon: '🌐', text: 'Open Safari on your iPhone or iPad' },
-        { icon: '⬆️', text: 'Tap the Share button at the bottom and click "Add to Home Screen"' },
-        { icon: '🔔', text: 'Allow notification requests to receive real-time price & news alerts' }
+        { icon: '🌐', text: 'Ensure you are browsing inside Apple Safari' },
+        { icon: '⬆️', text: 'Tap the Share icon (arrow up) at the bottom toolbar' },
+        { icon: '📲', text: 'Scroll down and tap "Add to Home Screen" — then click "Add"' }
       ]
     },
     desktop: {
-      title: 'Install for Windows PC & Mac',
+      title: 'Direct Windows PC & Mac Installation',
       color: '#a855f7',
-      desc: 'Dedicated desktop app experience. Opens in a clean borderless window with advanced trading tools.',
+      desc: 'Run InvestIQ in its own window as a desktop app. Eliminates browser bars and runs natively on Windows 10/11 or macOS.',
       options: [
-        { label: '🖥️ Download Windows App Installer (.msi)', filename: 'investiq-win-setup.msi', action: () => handleDownload('Windows PC', 'investiq-win-setup.msi') },
-        { label: '🍎 Download macOS App Installer (.dmg)', filename: 'investiq-mac-setup.dmg', action: () => handleDownload('macOS', 'investiq-mac-setup.dmg') },
+        { label: '⚡ Direct Install to PC Desktop (One-Click)', action: handleNativeInstall },
       ],
       steps: [
-        { icon: '📥', text: 'Click to download the native Windows or Mac installer' },
-        { icon: '⚡', text: 'Double-click the downloaded setup to deploy instantly to your desk' },
-        { icon: '🚀', text: 'Pin it to your taskbar or dock for instant access' }
+        { icon: '🌐', text: 'Open the website in Google Chrome or Microsoft Edge' },
+        { icon: '📥', text: 'Click the Install icon (⊕) inside the address bar, or click our button above' },
+        { icon: '✅', text: 'App opens in a standalone window and places a secure shortcut on your Desktop' }
       ]
     },
-    tablet: {
-      title: 'Exclusive High-Definition Tablet Version',
+    appstores: {
+      title: 'Publish directly to Google Play & Apple App Store',
       color: '#ec4899',
-      desc: 'InvestIQ includes a dedicated layout tailored specifically for iPads and Android tablets.',
+      desc: 'You can convert this exact live Vercel code into official Store packages instantly. Updates are automatically deployed Over-The-Air (OTA) to all stores whenever you edit the site here!',
       options: [
-        { label: '📐 Launch Tablet Workspace Simulator', filename: '', action: () => { alert('Tablet HD Mode Activated! Grid layouts are now expanded to double-width.'); onClose(); } }
+        { label: '📦 Launch App Store Packaging Assistant (PWABuilder)', action: () => window.open('https://www.pwabuilder.com', '_blank') }
       ],
       steps: [
-        { icon: '📐', text: 'Landscape Workspace: Rotates seamlessly to show dual columns (Chat + Charts side-by-side)' },
-        { icon: '📈', text: 'HD Graphics: Vector charts expand to utilize the full display screen resolution' },
-        { icon: '⚡', text: 'Optimized touch tap gestures for fast watchlist filtering & technical analysis' }
+        { icon: '🌍', text: 'Step 1: Go to pwabuilder.com and paste your live Vercel URL' },
+        { icon: '🚀', text: 'Step 2: Generate ready-to-submit packages for Play Store (.aab) & App Store (.ipa)' },
+        { icon: '🔄', text: 'Step 3: Submit to Google Console / Apple Developer Portal. Updates run 100% automatically!' }
       ]
     }
   };
@@ -470,110 +431,85 @@ function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(10px)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
-      onClick={(e) => { if (e.target === e.currentTarget && packProgress === -1) onClose(); }}>
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ background:'linear-gradient(135deg,rgba(15,23,42,0.99),rgba(2,6,23,0.99))', border:'1px solid rgba(255,255,255,0.12)', borderRadius:28, padding:40, maxWidth:580, width:'100%', position:'relative', boxShadow:'0 40px 80px -20px rgba(0,0,0,0.9)' }}>
         
         {/* Close */}
-        {packProgress === -1 && (
-          <button onClick={onClose} style={{ position:'absolute', top:16, right:16, background:'rgba(255,255,255,0.08)', border:'none', borderRadius:8, width:32, height:32, color:'#94a3b8', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
-        )}
+        <button onClick={onClose} style={{ position:'absolute', top:16, right:16, background:'rgba(255,255,255,0.08)', border:'none', borderRadius:8, width:32, height:32, color:'#94a3b8', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
 
         <h3 style={{ margin:'0 0 24px', color:'#fff', fontSize:'1.25rem', fontWeight:700, display:'flex', alignItems:'center', gap:10 }}>
-          <span>📲</span> InvestIQ Download & Installation Center
+          <span>📲</span> Direct Native Installation Center
         </h3>
 
         {/* Tabs */}
-        {packProgress === -1 && (
-          <div style={{ display:'flex', gap:6, marginBottom:28, background:'rgba(255,255,255,0.03)', borderRadius:12, padding:4, flexWrap:'wrap' }}>
-            {tabs.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                flex:1, minWidth:100, padding:'10px 0', borderRadius:9, border:'none', cursor:'pointer', fontSize:'0.75rem', fontWeight:600,
-                background: tab === t.id ? t.color + '18' : 'transparent',
-                color: tab === t.id ? t.color : '#64748b',
-                outline: tab === t.id ? `1px solid ${t.color}44` : 'none',
-                transition: 'all 0.2s',
-              }}>{t.label}</button>
+        <div style={{ display:'flex', gap:6, marginBottom:28, background:'rgba(255,255,255,0.03)', borderRadius:12, padding:4, flexWrap:'wrap' }}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              flex:1, minWidth:100, padding:'10px 0', borderRadius:9, border:'none', cursor:'pointer', fontSize:'0.75rem', fontWeight:600,
+              background: tab === t.id ? t.color + '18' : 'transparent',
+              color: tab === t.id ? t.color : '#64748b',
+              outline: tab === t.id ? `1px solid ${t.color}44` : 'none',
+              transition: 'all 0.2s',
+            }}>{t.label}</button>
+          ))}
+        </div>
+
+        <div>
+          <h4 style={{ margin:'0 0 8px', color:active.color, fontSize:'1.05rem', fontWeight:600 }}>{active.title}</h4>
+          <p style={{ margin:'0 0 24px', color:'#cbd5e1', fontSize:'0.85rem', lineHeight:1.5 }}>{active.desc}</p>
+
+          {/* Premium Installation Action Buttons */}
+          <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:28 }}>
+            {active.options.map((opt, i) => (
+              <button
+                key={i}
+                onClick={opt.action}
+                style={{
+                  width:'100%',
+                  padding:'14px 18px',
+                  borderRadius:14,
+                  border:`1px solid ${active.color}44`,
+                  background: `linear-gradient(135deg, rgba(15,23,42,0.8), rgba(7,15,35,0.8))`,
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '0.88rem',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: `0 4px 12px rgba(0,0,0,0.3)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = active.color; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${active.color}44`; e.currentTarget.style.transform = 'none'; }}
+              >
+                <span>{opt.label}</span>
+                <span style={{ fontSize:'0.75rem', color:active.color, textTransform:'uppercase', fontWeight:700 }}>Deploy Direct ⚡</span>
+              </button>
             ))}
           </div>
-        )}
 
-        {packProgress > -1 ? (
-          /* Packaging Screen */
-          <div style={{ padding:'20px 0', textAlign:'center' }}>
-            <div style={{ fontSize:40, marginBottom:16 }}>⚙️</div>
-            <h4 style={{ color:'#fff', margin:'0 0 8px', fontWeight:600 }}>Packaging Native Application Bundle</h4>
-            <p style={{ color:'#64748b', fontSize:'0.82rem', margin:'0 0 24px' }}>Compiling layout components & chart renderers for maximum device speed...</p>
-            
-            {/* Progress bar */}
-            <div style={{ width:'100%', height:8, background:'rgba(255,255,255,0.08)', borderRadius:4, overflow:'hidden', marginBottom:24 }}>
-              <div style={{ width:`${packProgress}%`, height:'100%', background:`linear-gradient(90deg, ${active.color}, #38bdf8)`, transition:'width 0.4s' }} />
-            </div>
-
-            {/* Logs console */}
-            <div style={{ background:'#020617', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:16, minHeight:120, textAlign:'left', fontFamily:'Courier New, monospace', fontSize:'0.72rem', color:'#38bdf8', overflowY:'auto' }}>
-              {packLogs.map((l, i) => (
-                <div key={i} style={{ marginBottom:6 }}>{l}</div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          /* Interactive Download Screen */
-          <div>
-            <h4 style={{ margin:'0 0 8px', color:active.color, fontSize:'1.05rem', fontWeight:600 }}>{active.title}</h4>
-            <p style={{ margin:'0 0 24px', color:'#cbd5e1', fontSize:'0.85rem', lineHeight:1.5 }}>{active.desc}</p>
-
-            {/* Premium Download Buttons */}
-            <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:28 }}>
-              {active.options.map((opt, i) => (
-                <button
-                  key={i}
-                  onClick={opt.action}
-                  style={{
-                    width:'100%',
-                    padding:'14px 18px',
-                    borderRadius:14,
-                    border:`1px solid ${active.color}44`,
-                    background: `linear-gradient(135deg, rgba(15,23,42,0.8), rgba(7,15,35,0.8))`,
-                    color: '#fff',
-                    fontWeight: 600,
-                    fontSize: '0.88rem',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    boxShadow: `0 4px 12px rgba(0,0,0,0.3)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = active.color; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${active.color}44`; e.currentTarget.style.transform = 'none'; }}
-                >
-                  <span>{opt.label}</span>
-                  <span style={{ fontSize:'0.75rem', color:active.color, textTransform:'uppercase', fontWeight:700 }}>Download ↓</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Steps Info */}
-            <div style={{ display:'flex', flexDirection:'column', gap:14, marginBottom:24 }}>
-              {active.steps.map((s, i) => (
-                <div key={i} style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
-                  <div style={{ width:32, height:32, borderRadius:8, background:`${active.color}15`, border:`1px solid ${active.color}25`, display:'flex', alignItems:'center', justifySelf:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>{s.icon}</div>
-                  <div style={{ paddingTop:6, color:'#cbd5e1', fontSize:'0.82rem', lineHeight:1.4 }}>
-                    {s.text}
-                  </div>
+          {/* Steps Info */}
+          <div style={{ display:'flex', flexDirection:'column', gap:14, marginBottom:24 }}>
+            {active.steps.map((s, i) => (
+              <div key={i} style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:`${active.color}15`, border:`1px solid ${active.color}25`, display:'flex', alignItems:'center', justifySelf:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>{s.icon}</div>
+                <div style={{ paddingTop:6, color:'#cbd5e1', fontSize:'0.82rem', lineHeight:1.4 }}>
+                  {s.text}
                 </div>
-              ))}
-            </div>
-
-            {/* Note */}
-            <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:'12px 16px', fontSize:'0.78rem', color:'#94a3b8' }}>
-              💡 Updates are pushed <strong style={{color:'#22c55e'}}>automatically</strong> — every improvements pushes instantly to all your devices without reinstalling.
-            </div>
+              </div>
+            ))}
           </div>
-        )}
+
+          {/* Note */}
+          <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:'12px 16px', fontSize:'0.78rem', color:'#94a3b8' }}>
+            💡 Updates are pushed <strong style={{color:'#22c55e'}}>automatically</strong> — every single improvement deployed to Vercel is updated instantly on installed apps. No file downloads or store submissions required for future updates!
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
 
