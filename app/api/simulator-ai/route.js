@@ -235,12 +235,19 @@ export async function POST(request) {
     let covMat = Array(N).fill(0).map(() => Array(N).fill(0));
     let corMat = Array(N).fill(0).map(() => Array(N).fill(0));
     
-    const minLen = Math.min(...assetData.map(a => a.returns.length));
+    const validLengths = assetData.map(a => a.returns.length).filter(l => l > 2);
+    const minLen = validLengths.length > 0 ? Math.min(...validLengths) : 0;
+
     if (minLen > 2) {
       for (let i = 0; i < N; i++) {
         for (let j = 0; j < N; j++) {
-          const r_i = assetData[i].returns.slice(-minLen);
-          const r_j = assetData[j].returns.slice(-minLen);
+          let r_i = assetData[i].returns.slice(-minLen);
+          let r_j = assetData[j].returns.slice(-minLen);
+          
+          // Pad with zeroes if an asset has missing/delisted history
+          if (r_i.length < minLen) r_i = Array(minLen).fill(0);
+          if (r_j.length < minLen) r_j = Array(minLen).fill(0);
+
           const cv = math.mean(math.dotMultiply(math.subtract(r_i, math.mean(r_i)), math.subtract(r_j, math.mean(r_j))));
           covMat[i][j] = cv;
           const sd_i = math.std(r_i) || 0.001;
