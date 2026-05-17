@@ -404,7 +404,7 @@ export default function Simulator() {
                 <div style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }} className="print-border-visible print-page-break">
                   <h4 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '1.1rem' }}>Monte Carlo Trajectory (Wealth Over Time)</h4>
                   <div style={{ width: '100%', height: '250px', position: 'relative' }}>
-                    <TrajectoryChart pathData={m.trajectoryPath} startValue={currentPortfolioValue} />
+                  <TrajectoryChart pathData={m.trajectoryPath} startValue={currentPortfolioValue} periodUnit={periodUnit} periodValue={periodValue} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '15px', fontSize: '0.8rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{width:'10px', height:'3px', background:'#22c55e'}}></div> Bull (p90)</div>
@@ -620,52 +620,154 @@ function CorrelationGrid({ corMat, assets }) {
   );
 }
 
-function TrajectoryChart({ pathData, startValue }) {
+function TrajectoryChart({ pathData, startValue, periodUnit, periodValue }) {
   if (!pathData || pathData.length === 0) return null;
-  
-  const width = 1000;
-  const height = 250;
-  
-  const years = pathData.map(d => d.year);
-  const maxYear = Math.max(...years);
-  
-  let minVal = startValue;
-  let maxVal = startValue;
+
+  // ── Layout constants ──────────────────────────────────────────────────────
+  const PAD = { top: 24, right: 24, bottom: 52, left: 80 };
+  const W = 960;
+  const H = 300;
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+
+  // ── Convert fractional-year index to display label ────────────────────────
+  const toLabel = (yearFrac) => {
+    const unit = periodUnit || 'Years';
+    if (unit === 'Days')   return Math.round(yearFrac * 365);
+    if (unit === 'Weeks')  return Math.round(yearFrac * 52);
+    if (unit === 'Months') return Math.round(yearFrac * 12);
+    return +yearFrac.toFixed(1); // Years
+  };
+
+  // ── Scale helpers ─────────────────────────────────────────────────────────
+  const maxYear = Math.max(...pathData.map(d => d.year));
+  const getX = (yearFrac) => (maxYear === 0 ? 0 : (yearFrac / maxYear) * innerW);
+
+  let minVal = Infinity, maxVal = -Infinity;
   pathData.forEach(d => {
-    if(d.p5 < minVal) minVal = d.p5;
-    if(d.p90 > maxVal) maxVal = d.p90;
+    minVal = Math.min(minVal, d.p5);
+    maxVal = Math.max(maxVal, d.p90);
   });
-  
+  minVal = Math.max(0, minVal * 0.9);
+  maxVal = maxVal * 1.05;
   const range = maxVal - minVal || 1;
-  minVal = Math.max(0, minVal - range * 0.1);
-  maxVal = maxVal + range * 0.1;
-  
-  const getX = (year) => (year / maxYear) * width;
-  const getY = (val) => height - ((val - minVal) / (maxVal - minVal)) * height;
+  const getY = (val) => innerH - ((val - minVal) / range) * innerH;
 
-  let d5 = `M ${getX(pathData[0].year)} ${getY(pathData[0].p5)}`;
-  let d50 = `M ${getX(pathData[0].year)} ${getY(pathData[0].p50)}`;
-  let d90 = `M ${getX(pathData[0].year)} ${getY(pathData[0].p90)}`;
+  // ── Build SVG path strings ────────────────────────────────────────────────
+  const pathStr = (key) =>
+    pathData.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(d.year)} ${getY(d[key])}`).join(' ');
 
-  pathData.forEach((d, i) => {
-    if (i === 0) return;
-    d5 += ` L ${getX(d.year)} ${getY(d.p5)}`;
-    d50 += ` L ${getX(d.year)} ${getY(d.p50)}`;
-    d90 += ` L ${getX(d.year)} ${getY(d.p90)}`;
+  const d5  = pathStr('p5');
+  const d50 = pathStr('p50');
+  const d90 = pathStr('p90');
+  const coneTop    = pathData.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(d.year)} ${getY(d.p90)}`).join(' ');
+  const coneBottom = pathData.slice().reverse().map(d => `L ${getX(d.year)} ${getY(d.p5)}`).join(' ');
+  const conePath   = `${coneTop} ${coneBottom} Z`;
+
+  // ── Y-axis ticks (5 evenly spaced) ───────────────────────────────────────
+  const formatMoney = (v) => {
+    if (v >= 1e7)  return `₹${(v/1e7).toFixed(1)}Cr`;
+    if (v >= 1e5)  return `₹${(v/1e5).toFixed(1)}L`;
+    if (v >= 1000) return `₹${(v/1000).toFixed(0)}K`;
+    return `₹${v.toFixed(0)}`;
+  };
+  const Y_TICKS = 5;
+  const yTicks = Array.from({ length: Y_TICKS + 1 }, (_, i) => minVal + (range * i) / Y_TICKS);
+
+  // ── X-axis ticks (up to 8 evenly spaced from data points) ─────────────────
+  const xTickCount = Math.min(pathData.length - 1, 8);
+  const xTicks = Array.from({ length: xTickCount + 1 }, (_, i) => {
+    const idx = Math.round((i / xTickCount) * (pathData.length - 1));
+    return pathData[idx];
   });
+
+  const unitLabel = periodUnit || 'Years';
+  const lastP = pathData[pathData.length - 1];
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-      <line x1="0" y1={getY(startValue)} x2={width} y2={getY(startValue)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4,4" />
-      <path d={`${d90} ${pathData.slice().reverse().map(d => `L ${getX(d.year)} ${getY(d.p5)}`).join(' ')} Z`} fill="rgba(56, 189, 248, 0.05)" />
-      
-      <path d={d5} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" vectorEffect="non-scaling-stroke" />
-      <path d={d50} fill="none" stroke="#38bdf8" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-      <path d={d90} fill="none" stroke="#22c55e" strokeWidth="2" strokeDasharray="6,4" vectorEffect="non-scaling-stroke" />
-      
-      <circle cx={width} cy={getY(pathData[pathData.length-1].p90)} r="4" fill="#22c55e" />
-      <circle cx={width} cy={getY(pathData[pathData.length-1].p50)} r="5" fill="#38bdf8" />
-      <circle cx={width} cy={getY(pathData[pathData.length-1].p5)} r="4" fill="#ef4444" />
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+      {/* ── Gradient defs ── */}
+      <defs>
+        <linearGradient id="coneGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+
+      <g transform={`translate(${PAD.left},${PAD.top})`}>
+        {/* ── Y grid lines + labels ── */}
+        {yTicks.map((v, i) => (
+          <g key={i}>
+            <line x1={0} y1={getY(v)} x2={innerW} y2={getY(v)}
+              stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
+            <text x={-8} y={getY(v) + 4} textAnchor="end"
+              fill="#64748b" fontSize="11" fontFamily="Inter,sans-serif">
+              {formatMoney(v)}
+            </text>
+          </g>
+        ))}
+
+        {/* ── X grid lines + labels ── */}
+        {xTicks.map((d, i) => (
+          <g key={i}>
+            <line x1={getX(d.year)} y1={0} x2={getX(d.year)} y2={innerH}
+              stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="3,3" />
+            <text x={getX(d.year)} y={innerH + 20} textAnchor="middle"
+              fill="#64748b" fontSize="11" fontFamily="Inter,sans-serif">
+              {toLabel(d.year)}
+            </text>
+          </g>
+        ))}
+
+        {/* ── Axis labels ── */}
+        <text x={innerW / 2} y={innerH + 44} textAnchor="middle"
+          fill="#94a3b8" fontSize="12" fontFamily="Inter,sans-serif">
+          {unitLabel}
+        </text>
+        <text x={-innerH / 2} y={-58} textAnchor="middle"
+          fill="#94a3b8" fontSize="12" fontFamily="Inter,sans-serif"
+          transform="rotate(-90)">
+          Wealth (₹)
+        </text>
+
+        {/* ── Start baseline ── */}
+        <line x1={0} y1={getY(startValue)} x2={innerW} y2={getY(startValue)}
+          stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="4,4" />
+
+        {/* ── Cone fill ── */}
+        <path d={conePath} fill="url(#coneGrad)" />
+
+        {/* ── Bear line (p5) ── */}
+        <path d={d5} fill="none" stroke="#ef4444" strokeWidth="2"
+          strokeDasharray="6,4" strokeLinecap="round" />
+
+        {/* ── Median line (p50) ── */}
+        <path d={d50} fill="none" stroke="#38bdf8" strokeWidth="3"
+          strokeLinecap="round" />
+
+        {/* ── Bull line (p90) ── */}
+        <path d={d90} fill="none" stroke="#22c55e" strokeWidth="2"
+          strokeDasharray="6,4" strokeLinecap="round" />
+
+        {/* ── Terminal dots ── */}
+        <circle cx={getX(lastP.year)} cy={getY(lastP.p90)} r="5" fill="#22c55e" />
+        <circle cx={getX(lastP.year)} cy={getY(lastP.p50)} r="6" fill="#38bdf8" />
+        <circle cx={getX(lastP.year)} cy={getY(lastP.p5)}  r="5" fill="#ef4444" />
+
+        {/* ── Terminal value labels ── */}
+        <text x={getX(lastP.year) + 8} y={getY(lastP.p90) + 4}
+          fill="#22c55e" fontSize="11" fontFamily="Inter,sans-serif" fontWeight="600">
+          {formatMoney(lastP.p90)}
+        </text>
+        <text x={getX(lastP.year) + 8} y={getY(lastP.p50) + 4}
+          fill="#38bdf8" fontSize="11" fontFamily="Inter,sans-serif" fontWeight="600">
+          {formatMoney(lastP.p50)}
+        </text>
+        <text x={getX(lastP.year) + 8} y={getY(lastP.p5) + 4}
+          fill="#ef4444" fontSize="11" fontFamily="Inter,sans-serif" fontWeight="600">
+          {formatMoney(lastP.p5)}
+        </text>
+      </g>
     </svg>
   );
 }
