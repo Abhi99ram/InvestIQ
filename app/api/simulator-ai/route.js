@@ -484,7 +484,7 @@ export async function POST(request) {
       portVolAnnual, VaR_95, CVaR_95, riskScore, riskLevel, projectedCAGR, realCAGR, estimatedValueReal,
       p5, p10, p50, p90, sharpeRatio, sortino, HHI, stressTests, distributionPoints, trajectoryPath, optimalWeights, hasDividends, hasAdvancedModeling,
       netOfTaxValue, estimatedTax, corMat,
-      macro: { VIX, US10Y, USDINR, riskFreeRateAnnual }
+      macro: { VIX, US10Y, IN10Y, USDINR, riskFreeRateAnnual }
     };
 
     const groqApiKey = process.env.GROQ_API_KEY;
@@ -500,7 +500,7 @@ Produce ONLY a valid JSON object with the following exact keys:
 {
   "narrativeSummary": "3-4 sentence plain-language summary of the portfolio's situation",
   "topRisk": "the single biggest risk in 1 sentence",
-  "macroImpact": "how VIX, Yields, and USD/INR are specifically affecting this portfolio (crucially, evaluate Indian Yields/Data for Indian stocks, and consider USD/INR FX risk for foreign exposure)",
+  "macroImpact": "how VIX, Yields, and USD/INR are specifically affecting this portfolio (crucially, evaluate Indian 10Y Yields/Data for Indian stocks, US 10Y Yields for foreign stocks, and consider USD/INR FX risk for foreign exposure)",
   "suggestions": [
     {
       "action": "Reduce Reliance Industries by 15%",
