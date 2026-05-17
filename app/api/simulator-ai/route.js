@@ -527,9 +527,11 @@ Produce ONLY a valid JSON object with the following exact keys:
         { temperature: 0.1, response_format: { type: "json_object" } }
       );
       
-      parsedResult = JSON.parse(aiResponse.content);
+      const raw = aiResponse.content || '{}';
+      const cleanJson = raw.match(/\{[\s\S]*\}/)?.[0] || '{}';
+      parsedResult = JSON.parse(cleanJson);
     } catch(e) { 
-      throw new Error(e.message); 
+      throw new Error("Failed to parse AI output: " + e.message); 
     }
 
     return NextResponse.json({ metrics: metricsPayload, ai: parsedResult });
