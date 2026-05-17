@@ -364,7 +364,7 @@ function PlatformButton({ icon, label, sub, color, onClick }) {
   );
 }
 
-function InstallModal({ tab, setTab, installPrompt, onClose }) {
+function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
   const tabs = [
     { id: 'android', label: '🤖 Android App', color: '#22c55e' },
     { id: 'ios',     label: '🍎 iOS App',     color: '#38bdf8' },
@@ -383,29 +383,28 @@ function InstallModal({ tab, setTab, installPrompt, onClose }) {
 
   const instructions = {
     android: {
-      title: 'Official Google Play Store App',
+      title: 'Direct Android Installation',
       color: '#22c55e',
-      desc: 'Get the InvestIQ App directly from the official Google Play Store. It wraps our high-definition Vercel live application shell, enabling automatic updates and native push notifications!',
+      desc: 'Install InvestIQ natively on your Android phone or tablet directly from this website. No Play Store required, and updates are automatic!',
       options: [
-        { label: '🛍️ Download on Google Play Store', url: 'https://play.google.com/store/apps/details?id=app.vercel.investiqgreen' }
+        { label: '📥 Install Android App', action: () => { if (installPrompt) { onInstall(); } else { alert('To install, tap the 3-dot menu in Chrome and select "Install app" or "Add to Home screen".'); } } }
       ],
       steps: [
-        { icon: '🛍️', text: 'Tap the button above to go to the official Google Play Store' },
-        { icon: '📥', text: 'Click "Install" to download and add InvestIQ directly to your app launcher' },
-        { icon: '🔄', text: 'Automatic updates are delivered in real time whenever we publish updates here!' }
+        { icon: '📥', text: 'Tap the "Install Android App" button above, or select "Install app" from your browser menu.' },
+        { icon: '📱', text: 'Confirm the prompt to add InvestIQ to your home screen.' },
+        { icon: '🚀', text: 'Launch the app from your home screen for a full-screen native experience!' }
       ]
     },
     ios: {
-      title: 'Official Apple App Store App',
+      title: 'Direct iOS Installation',
       color: '#38bdf8',
-      desc: 'Deploy InvestIQ onto your iOS devices. Runs natively, enables high-fidelity charting, and connects to background price engines.',
-      options: [
-        { label: '🛍️ Download on the Apple App Store', url: 'https://apps.apple.com/app/investiq-financial/id6470000000' }
-      ],
+      desc: 'Install InvestIQ on your iPhone or iPad natively from Safari. No App Store required!',
+      options: [],
       steps: [
-        { icon: '🛍️', text: 'Tap the button above to go to the official Apple App Store' },
-        { icon: '📥', text: 'Download the app natively onto your iPhone or iPad screen' },
-        { icon: '🔔', text: 'Grant notification permissions during setup to receive real-time price & news alerts' }
+        { icon: '🧭', text: 'Open this website in the Safari browser.' },
+        { icon: '📤', text: 'Tap the "Share" button at the bottom of the Safari screen.' },
+        { icon: '➕', text: 'Scroll down and tap "Add to Home Screen".' },
+        { icon: '📱', text: 'Launch InvestIQ from your home screen for the native app experience!' }
       ]
     },
     desktop: {
