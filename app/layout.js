@@ -22,11 +22,32 @@ export default function RootLayout({ children }) {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <script dangerouslySetInnerHTML={{__html: `
-          if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-              navigator.serviceWorker.register('/sw.js').catch(() => {});
-            });
-          }
+          (function () {
+            async function setupServiceWorker() {
+              if (!('serviceWorker' in navigator)) return;
+              try {
+                const res = await fetch('/api/version?_t=' + Date.now(), { cache: 'no-store' });
+                const data = await res.json();
+                const key = 'investiq_sw_version';
+                const prev = localStorage.getItem(key);
+                if (prev && prev !== data.version) {
+                  const regs = await navigator.serviceWorker.getRegistrations();
+                  await Promise.all(regs.map((r) => r.unregister()));
+                  if (window.caches && caches.keys) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((k) => caches.delete(k)));
+                  }
+                }
+                localStorage.setItem(key, data.version);
+                const reg = await navigator.serviceWorker.register('/sw.js');
+                if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                reg.update();
+              } catch (e) {
+                navigator.serviceWorker.register('/sw.js').catch(function () {});
+              }
+            }
+            window.addEventListener('load', setupServiceWorker);
+          })();
         `}} />
       </head>
       <body>{children}</body>
