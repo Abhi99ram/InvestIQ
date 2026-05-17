@@ -147,10 +147,24 @@ export default function Home() {
 
   return (
     <div className="app-layout">
+      {/* Mobile Sidebar Backdrop Overlay */}
+      {sidebarOpen && (
+        <div 
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 99,
+          }}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <img src="/logo.png" alt="InvestIQ Logo" style={{ width: '36px', height: '36px', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 4px 12px rgba(56,189,248,0.2)' }} />
+          <img src="/logo.png" alt="InvestIQ Logo" style={{ width: '38px', height: '38px', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 4px 20px rgba(56,189,248,0.25)' }} />
           <h1>InvestIQ AI</h1>
         </div>
         <nav className="sidebar-nav">
@@ -164,9 +178,13 @@ export default function Home() {
             ))}
           </div>
         </nav>
-        <div style={{padding:'16px 20px',borderTop:'1px solid var(--border-color)',fontSize:'0.75rem',color:'var(--text-muted)'}}>
-          InvestIQ AI v1.0<br/>Data via Yahoo Finance<br/>
-          <span style={{color:'var(--accent-amber)'}}>⚠ Not financial advice</span>
+        <div style={{ padding: '24px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '0.78rem', color: '#475569', lineHeight: 1.6 }}>
+          <div style={{ color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>InvestIQ AI v1.0</div>
+          <div style={{ marginBottom: 12 }}>Data via Yahoo Finance</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#f59e0b', fontWeight: 600 }}>
+            <span>⚠️</span>
+            <span>Not financial advice</span>
+          </div>
         </div>
       </aside>
 
@@ -174,8 +192,9 @@ export default function Home() {
       <div className="main-content">
         {/* Header */}
         <header className="header">
-          <button className="btn-secondary btn-sm" onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{display:'none','@media(maxWidth:900px)':{display:'block'}}}>☰</button>
+          <button className="hamburger-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
+            ☰
+          </button>
           <div className="search-box">
             <span className="search-icon">🔍</span>
             <input type="text" placeholder="Search stocks (e.g. RELIANCE, AAPL, TCS)..."
@@ -222,3 +241,4 @@ export default function Home() {
     </div>
   );
 }
+
