@@ -388,13 +388,10 @@ function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
         setPackLogs(prev => [...prev, steps[4]]);
         clearInterval(logInterval.current);
 
-        // Download actual shortcut/installer wrapper file
+        // Download actual shortcut/installer wrapper file from the public/downloads directory
         setTimeout(() => {
-          const content = `InvestIQ AI ${platform} Installer\nVersion: 1.0.0\nUrl: https://investiq-green.vercel.app\nThank you for installing InvestIQ!`;
-          const blob = new Blob([content], { type: 'text/plain' });
-          const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
-          link.href = url;
+          link.href = `/downloads/${filename}`;
           link.download = filename;
           document.body.appendChild(link);
           link.click();
@@ -409,6 +406,7 @@ function InstallModal({ tab, setTab, installPrompt, onInstall, onClose }) {
       }
     }, 800);
   };
+
 
   const instructions = {
     android: {
