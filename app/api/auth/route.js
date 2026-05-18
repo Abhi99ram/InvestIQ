@@ -16,28 +16,36 @@ async function sendEmailOtp(email, otp) {
       auth: { user: gmailUser, pass: gmailPass },
     });
 
-
     const emailHtml = `
-      <div style="font-family:sans-serif;max-width:400px;margin:auto;padding:20px;border:1px solid #eee;border-radius:10px;">
-        <h2 style="color:#38bdf8;">InvestIQ OTP Verification</h2>
-        <p>Your password reset OTP is:</p>
-        <h1 style="letter-spacing:4px;color:#1e293b;background:#f1f5f9;padding:10px;text-align:center;border-radius:6px;">${otp}</h1>
-        <p style="font-size:12px;color:#64748b;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
-        <hr style="border:none;border-top:1px solid #eee;margin-top:20px;" />
-        <p style="font-size:11px;color:#94a3b8;line-height:1.4;">
-          <strong>To ensure delivery of future alerts, please add this email address to your contacts.</strong><br/>
-          You are receiving this email because you registered an account at InvestIQ. If you did not request this, please ignore it.<br/>
-          For support, contact investiq.helpdesk@gmail.com
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 450px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b; line-height: 1.6;">
+        <h2 style="color: #0f172a; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">InvestIQ Security Verification</h2>
+        <p style="margin-top: 0; margin-bottom: 16px;">Hello,</p>
+        <p style="margin-top: 0; margin-bottom: 16px;">A password reset request was initiated for your InvestIQ account. Please use the verification code below to authorize this request:</p>
+        <div style="letter-spacing: 4px; color: #0f172a; font-size: 24px; font-weight: 700; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; text-align: center; border-radius: 8px; margin: 20px 0; font-family: monospace;">${otp}</div>
+        <p style="font-size: 12px; color: #64748b; margin-top: 0; margin-bottom: 20px;">This code is valid for 10 minutes. For security, do not share this code with anyone.</p>
+        <p style="font-size: 12px; color: #64748b; margin-top: 0; margin-bottom: 20px;">If you did not initiate this request, you can safely ignore this message. Your password will remain unchanged.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin-top: 25px; margin-bottom: 15px;" />
+        <p style="font-size: 11px; color: #94a3b8; line-height: 1.5; margin: 0;">
+          This is an automated security message. Please do not reply directly to this email. For assistance, contact support at <a href="mailto:investiq.helpdesk@gmail.com" style="color: #94a3b8; text-decoration: underline;">investiq.helpdesk@gmail.com</a>.
         </p>
       </div>
     `;
 
+    const emailText = `Hello,\n\nA password reset request was initiated for your InvestIQ account. Please use the verification code below to authorize this request:\n\nVerification Code: ${otp}\n\nThis code is valid for 10 minutes. For security, do not share this code with anyone.\n\nIf you did not initiate this request, you can safely ignore this message. Your password will remain unchanged.\n\n---\nThis is an automated security message. Please do not reply directly to this email. For assistance, contact support at investiq.helpdesk@gmail.com.`;
+
     await transporter.sendMail({
-      from: '"InvestIQ Support" <' + gmailUser + '>',
+      from: '"InvestIQ Helpdesk" <' + gmailUser + '>',
       to: email,
-      subject: `InvestIQ Password Reset OTP: ${otp}`,
-      text: `Your InvestIQ OTP is: ${otp}\n\nThis OTP is valid for 10 minutes. Do not share it with anyone.\n\nTo ensure delivery of future alerts, please add this email address to your contacts.\n\nYou are receiving this email because you registered an account at InvestIQ. For support, contact investiq.helpdesk@gmail.com`,
+      subject: `InvestIQ Security Verification Code: ${otp}`,
+      text: emailText,
       html: emailHtml,
+      headers: {
+        'X-Priority': '1',
+        'X-MSMail-Priority': 'High',
+        'Importance': 'high',
+        'X-Auto-Response-Suppress': 'OOF, AutoReply',
+        'Feedback-ID': 'otp:investiq'
+      }
     });
     console.log(`[OTP Email] Sent to ${email} successfully.`);
     return true;
@@ -59,34 +67,42 @@ async function sendWelcomeEmail(email, name) {
       auth: { user: gmailUser, pass: gmailPass },
     });
 
-
     const emailHtml = `
-      <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:20px;border:1px solid #eee;border-radius:10px;">
-        <h2 style="color:#38bdf8;">Welcome to InvestIQ, ${name}!</h2>
-        <p>We are thrilled to have you on board. InvestIQ is your 24/7 intelligent market companion.</p>
-        <p><strong>What you can do now:</strong></p>
-        <ul>
-          <li>Set up Price Alerts to get notified instantly</li>
-          <li>Analyze company financials with our AI insights</li>
-          <li>Track market trends in real-time</li>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b; line-height: 1.6;">
+        <h2 style="color: #0f172a; font-size: 22px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Welcome to InvestIQ</h2>
+        <p style="margin-top: 0; margin-bottom: 16px;">Hello ${name},</p>
+        <p style="margin-top: 0; margin-bottom: 16px;">Thank you for registering an account on InvestIQ. We are writing to confirm that your account registration was successful and is now fully active.</p>
+        <p style="margin-top: 0; margin-bottom: 16px;">Your user dashboard offers several tools to help monitor and manage your financial interests:</p>
+        <ul style="margin-top: 0; margin-bottom: 24px; padding-left: 20px;">
+          <li style="margin-bottom: 8px;"><strong>Custom Alerts:</strong> Configure customizable notifications for price updates.</li>
+          <li style="margin-bottom: 8px;"><strong>Financial Analysis:</strong> Review key metrics and financial reports for tracked entities.</li>
+          <li style="margin-bottom: 8px;"><strong>Personal Dashboard:</strong> Access clean, comprehensive real-time dashboard data.</li>
         </ul>
-        <p style="margin-top:20px;">If you have any questions, simply reply to this email!</p>
-        <p style="font-size:12px;color:#64748b;">Happy Investing,<br/>The InvestIQ Team</p>
-        <hr style="border:none;border-top:1px solid #eee;margin-top:20px;" />
-        <p style="font-size:11px;color:#94a3b8;line-height:1.4;">
-          <strong>To ensure delivery of future alerts, please add this email address to your contacts.</strong><br/>
-          You are receiving this email because you registered an account at InvestIQ. If you wish to unsubscribe, you can delete your account via the Support tab.<br/>
-          For support, contact investiq.helpdesk@gmail.com
+        <p style="margin-top: 0; margin-bottom: 24px;">If you have any questions or require support, please contact us by replying directly to this email.</p>
+        <p style="margin-top: 0; margin-bottom: 0;">Sincerely,</p>
+        <p style="margin-top: 4px; margin-bottom: 0; font-weight: 500; color: #475569;">The InvestIQ Support Team</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin-top: 30px; margin-bottom: 20px;" />
+        <p style="font-size: 11px; color: #94a3b8; line-height: 1.5; margin: 0;">
+          This is a transactional message sent to confirm your registration on InvestIQ. If you did not sign up for this account, please let us know at <a href="mailto:investiq.helpdesk@gmail.com" style="color: #94a3b8; text-decoration: underline;">investiq.helpdesk@gmail.com</a>.
         </p>
       </div>
     `;
 
+    const emailText = `Hello ${name},\n\nThank you for registering an account on InvestIQ. We are writing to confirm that your account registration was successful and is now fully active.\n\nYour user dashboard offers several tools to help monitor and manage your financial interests:\n- Custom Alerts: Configure customizable notifications for price updates.\n- Financial Analysis: Review key metrics and financial reports for tracked entities.\n- Personal Dashboard: Access clean, comprehensive real-time dashboard data.\n\nIf you have any questions or require support, please contact us by replying directly to this email.\n\nSincerely,\nThe InvestIQ Support Team\n\n---\nThis is a transactional message sent to confirm your registration on InvestIQ. If you did not sign up for this account, please let us know at investiq.helpdesk@gmail.com.`;
+
     await transporter.sendMail({
-      from: '"InvestIQ" <' + gmailUser + '>',
+      from: '"InvestIQ Helpdesk" <' + gmailUser + '>',
       to: email,
-      subject: `Welcome to InvestIQ, ${name}!`,
-      text: `Welcome to InvestIQ, ${name}!\n\nWe are thrilled to have you on board. InvestIQ is your 24/7 intelligent market companion.\n\nWhat you can do now:\n- Set up Price Alerts to get notified instantly\n- Analyze company financials with our AI insights\n- Track market trends in real-time\n\nIf you have any questions, simply reply to this email!\n\nHappy Investing,\nThe InvestIQ Team\n\n---\nTo ensure delivery of future alerts, please add this email address to your contacts.\nYou are receiving this email because you registered an account at InvestIQ. If you wish to unsubscribe, you can delete your account via the Support tab.`,
+      subject: `Welcome to InvestIQ - Your Account Details`,
+      text: emailText,
       html: emailHtml,
+      headers: {
+        'X-Priority': '3',
+        'X-MSMail-Priority': 'Normal',
+        'Importance': 'Normal',
+        'X-Auto-Response-Suppress': 'OOF, AutoReply',
+        'Feedback-ID': 'welcome:investiq'
+      }
     });
     return true;
   } catch (error) {

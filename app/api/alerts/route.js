@@ -68,28 +68,41 @@ export async function POST(request) {
       const { transporter, fromAddr, isReal } = await createMailTransporter();
 
       const emailHtml = `
-        <div style="font-family:sans-serif;max-width:520px;margin:auto;padding:20px;border:1px solid #eee;border-radius:10px;">
-          <h2 style="color:#38bdf8;">InvestIQ Alert</h2>
-          <div style="background:#f8fafc;padding:15px;border-radius:8px;margin:20px 0;">
-            <p style="margin:5px 0;"><strong>Symbol:</strong> ${symbol}</p>
-            <p style="margin:5px 0;"><strong>Message:</strong> ${message}</p>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b; line-height: 1.6;">
+          <h2 style="color: #0f172a; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">InvestIQ Price Alert</h2>
+          <p style="margin-top: 0; margin-bottom: 16px;">Hello,</p>
+          <p style="margin-top: 0; margin-bottom: 16px;">This message is to notify you that your custom alert for <strong>${symbol}</strong> has been triggered.</p>
+          
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #475569;"><strong>Symbol:</strong> ${symbol}</p>
+            <p style="margin: 0; font-size: 14px; color: #1e293b;"><strong>Details:</strong> ${message}</p>
           </div>
-          <p>Log in to InvestIQ to view details.</p>
-          <hr style="border:none;border-top:1px solid #eee;margin-top:30px;" />
-          <p style="font-size:11px;color:#94a3b8;line-height:1.4;">
-            <strong>To ensure delivery of future alerts, please add this email address to your contacts.</strong><br/>
-            You are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to stop receiving these, please log in and delete the alert, or delete your account via the Support tab.<br/>
-            For support, contact investiq.helpdesk@gmail.com
+          
+          <p style="margin-top: 0; margin-bottom: 24px;">Please log in to your InvestIQ dashboard to manage your active watchlists and notifications.</p>
+          <p style="margin-top: 0; margin-bottom: 0;">Sincerely,</p>
+          <p style="margin-top: 4px; margin-bottom: 0; font-weight: 500; color: #475569;">The InvestIQ Support Team</p>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin-top: 25px; margin-bottom: 15px;" />
+          <p style="font-size: 11px; color: #94a3b8; line-height: 1.5; margin: 0;">
+            You are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to stop receiving these alerts, you can manage or delete them in your user dashboard, or close your account via the Support page.
           </p>
         </div>
       `;
 
+      const emailText = `Hello,\n\nThis message is to notify you that your custom alert for ${symbol} has been triggered.\n\nSymbol: ${symbol}\nDetails: ${message}\n\nPlease log in to your InvestIQ dashboard to manage your active watchlists and notifications.\n\nSincerely,\nThe InvestIQ Support Team\n\n---\nYou are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to stop receiving these alerts, you can manage or delete them in your user dashboard, or close your account via the Support page.`;
+
       const info = await transporter.sendMail({
         from: '"InvestIQ Alerts" <' + fromAddr + '>',
         to: recipientEmail,
-        subject: `InvestIQ Alert: ${symbol}`,
-        text: `Hello ${recipientEmail.split('@')[0]},\n\nInvestIQ Alert Triggered for ${symbol}!\n\n${message}\n\nTriggered at: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST\n\nInvestIQ — Your Financial Intelligence Hub\n\n---\nTo ensure delivery of future alerts, please add this email address to your contacts.\nYou are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to unsubscribe, you can delete your alert or account via the Support tab.`,
+        subject: `InvestIQ Alert: ${symbol} Notification`,
+        text: emailText,
         html: emailHtml,
+        headers: {
+          'X-Priority': '3',
+          'X-MSMail-Priority': 'Normal',
+          'Importance': 'Normal',
+          'X-Auto-Response-Suppress': 'OOF, AutoReply',
+          'Feedback-ID': 'custom-alert:investiq'
+        }
       });
 
       results.emailSent = true;

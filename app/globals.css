@@ -756,7 +756,31 @@ a:hover { color: #7dd3fc; }
 @media (max-width: 600px) {
   .index-cards { grid-template-columns: repeat(2, 1fr); }
   .grid-4 { grid-template-columns: 1fr; }
-  .header .search-box { display: none; } /* Hide global header search on mobile */
+  .header .search-box {
+    display: block !important;
+    flex: 1;
+    max-width: none;
+    margin: 0 8px;
+  }
+  .header .search-box input {
+    padding: 8px 12px 8px 32px;
+    font-size: 0.85rem;
+    height: 38px;
+    border-radius: 10px;
+  }
+  .header .search-box .search-icon {
+    left: 12px;
+    font-size: 0.85rem;
+  }
+  .header .search-results {
+    position: absolute;
+    width: 100%;
+    max-height: 250px;
+    z-index: 9999;
+  }
+  .market-status {
+    display: none !important; /* Hide market status on mobile to make room for search */
+  }
   .page-container { overflow: visible; }
 }
 

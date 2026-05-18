@@ -65,22 +65,72 @@ export async function PUT(request) {
 
       if (changesText.length > 0) {
         try {
-          // Notify Admin
+          // 1. Notify Admin
+          const adminHtml = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b; line-height: 1.6;">
+              <h2 style="color: #0f172a; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Admin Alert: Profile Updated</h2>
+              <p style="margin-top: 0; margin-bottom: 16px;">A user has updated their account details:</p>
+              <ul style="margin-top: 0; margin-bottom: 20px; padding-left: 20px;">
+                <li style="margin-bottom: 6px;"><strong>User ID:</strong> ${updatedUser.id}</li>
+                <li style="margin-bottom: 6px;"><strong>Original Email:</strong> ${targetUser.email}</li>
+              </ul>
+              <p style="margin-top: 0; margin-bottom: 12px;"><strong>Changes Made:</strong></p>
+              <ul style="margin-top: 0; margin-bottom: 20px; padding-left: 20px;">
+                ${changesText.map(c => `<li style="margin-bottom: 6px;">${c}</li>`).join('')}
+              </ul>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin-top: 25px; margin-bottom: 15px;" />
+              <p style="font-size: 11px; color: #94a3b8; margin: 0;">InvestIQ Administrative Notification</p>
+            </div>
+          `;
+
           await transporter.sendMail({
             from: '"InvestIQ System" <' + gmailUser + '>',
             to: 'investiq.helpdesk@gmail.com',
             subject: `User Profile Updated: ${targetUser.email}`,
             text: `A user has updated their profile details:\n\nUser ID: ${updatedUser.id}\nOriginal Email: ${targetUser.email}\n\nChanges Made:\n${changesText.join('\n')}`,
-            html: `<p>A user has updated their profile details:</p><ul><li>Original Email: ${targetUser.email}</li></ul><p><strong>Changes Made:</strong></p><ul>${changesText.map(c => `<li>${c}</li>`).join('')}</ul>`
+            html: adminHtml,
+            headers: {
+              'X-Priority': '3',
+              'Importance': 'Normal',
+              'X-Auto-Response-Suppress': 'OOF, AutoReply'
+            }
           });
           
-          // Notify User
+          // 2. Notify User
+          const userHtml = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b; line-height: 1.6;">
+              <h2 style="color: #0f172a; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">InvestIQ Profile Update Confirmation</h2>
+              <p style="margin-top: 0; margin-bottom: 16px;">Hello ${updatedUser.name || 'User'},</p>
+              <p style="margin-top: 0; margin-bottom: 16px;">This message confirms that your profile details were successfully updated.</p>
+              <p style="margin-top: 0; margin-bottom: 12px;"><strong>Changes Made:</strong></p>
+              <ul style="margin-top: 0; margin-bottom: 20px; padding-left: 20px;">
+                ${changesText.map(c => `<li style="margin-bottom: 6px;">${c}</li>`).join('')}
+              </ul>
+              <p style="margin-top: 0; margin-bottom: 20px;">If you did not authorize these changes, please notify our support team immediately.</p>
+              <p style="margin-top: 0; margin-bottom: 0;">Sincerely,</p>
+              <p style="margin-top: 4px; margin-bottom: 0; font-weight: 500; color: #475569;">The InvestIQ Support Team</p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin-top: 25px; margin-bottom: 15px;" />
+              <p style="font-size: 11px; color: #94a3b8; line-height: 1.5; margin: 0;">
+                This is a security notification regarding your InvestIQ profile. Please do not reply directly to this automated email.
+              </p>
+            </div>
+          `;
+
+          const userText = `Hello ${updatedUser.name || 'User'},\n\nThis message confirms that your profile details were successfully updated.\n\nChanges Made:\n${changesText.join('\n')}\n\nIf you did not authorize these changes, please notify our support team immediately at investiq.helpdesk@gmail.com.\n\nSincerely,\nThe InvestIQ Support Team\n\n---\nThis is a security notification regarding your InvestIQ profile. Please do not reply directly to this automated email.`;
+
           await transporter.sendMail({
-            from: '"InvestIQ AI" <' + gmailUser + '>',
+            from: '"InvestIQ Helpdesk" <' + gmailUser + '>',
             to: updatedUser.email,
-            subject: 'Your Profile Has Been Updated',
-            text: `Hi ${updatedUser.name || 'User'},\n\nYour profile details have been successfully updated.\n\nChanges Made:\n${changesText.join('\n')}\n\nIf you did not make these changes, please contact support immediately.\n\nInvestIQ AI Team`,
-            html: `<p>Hi ${updatedUser.name || 'User'},</p><p>Your profile details have been successfully updated.</p><p><strong>Changes Made:</strong></p><ul>${changesText.map(c => `<li>${c}</li>`).join('')}</ul><p>If you did not make these changes, please contact support immediately at investiq.helpdesk@gmail.com.</p><p>InvestIQ AI Team</p>`
+            subject: 'Security Notification: InvestIQ Profile Updated',
+            text: userText,
+            html: userHtml,
+            headers: {
+              'X-Priority': '2',
+              'X-MSMail-Priority': 'High',
+              'Importance': 'high',
+              'X-Auto-Response-Suppress': 'OOF, AutoReply',
+              'Feedback-ID': 'profile-update:investiq'
+            }
           });
         } catch (e) { console.error('Failed to notify about update', e); }
       }

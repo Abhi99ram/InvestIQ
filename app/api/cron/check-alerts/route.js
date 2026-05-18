@@ -23,36 +23,45 @@ async function sendAlertEmail(email, name, symbol, targetPrice, currentPrice, di
       auth: { user: gmailUser, pass: gmailPass },
     });
 
-
     const isGain = direction === 'above';
-    const color = isGain ? '#22c55e' : '#ef4444';
-    const icon = isGain ? '📈' : '📉';
+    const accentColor = isGain ? '#16a34a' : '#dc2626'; // Professional darker green/red
 
     const emailHtml = `
-      <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:20px;border:1px solid #eee;border-radius:10px;">
-        <h2 style="color:${color};">InvestIQ Price Alert Triggered</h2>
-        <p>Hi ${name || 'Investor'},</p>
-        <p>Your price alert for <strong>${symbol}</strong> has just been triggered!</p>
-        <div style="background:#f8fafc;padding:15px;border-radius:8px;margin:20px 0;">
-          <p style="margin:5px 0;"><strong>Condition:</strong> Price goes ${direction} ₹${targetPrice}</p>
-          <p style="margin:5px 0;font-size:18px;color:${color};"><strong>Current Price:</strong> ₹${currentPrice.toFixed(2)}</p>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b; line-height: 1.6;">
+        <h2 style="color: ${accentColor}; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">InvestIQ Price Alert Triggered</h2>
+        <p style="margin-top: 0; margin-bottom: 16px;">Hello ${name || 'Investor'},</p>
+        <p style="margin-top: 0; margin-bottom: 16px;">This message is to notify you that your price alert for <strong>${symbol}</strong> has been triggered.</p>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 8px 0; font-size: 14px; color: #475569;"><strong>Trigger Condition:</strong> Price moved ${direction} ₹${targetPrice}</p>
+          <p style="margin: 0; font-size: 18px; color: ${accentColor}; font-weight: bold;"><strong>Current Market Price:</strong> ₹${currentPrice.toFixed(2)}</p>
         </div>
-        <p>Log in to InvestIQ to view your portfolio and take action.</p>
-        <hr style="border:none;border-top:1px solid #eee;margin-top:30px;" />
-        <p style="font-size:11px;color:#94a3b8;line-height:1.4;">
-          <strong>To ensure delivery of future alerts, please add this email address to your contacts.</strong><br/>
-          You are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to stop receiving these, please log in and delete the alert, or delete your account via the Support tab.<br/>
-          For support, contact investiq.helpdesk@gmail.com
+        
+        <p style="margin-top: 0; margin-bottom: 24px;">To view your watchlists or manage your notifications, please log in to your InvestIQ dashboard.</p>
+        <p style="margin-top: 0; margin-bottom: 0;">Sincerely,</p>
+        <p style="margin-top: 4px; margin-bottom: 0; font-weight: 500; color: #475569;">The InvestIQ Support Team</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin-top: 25px; margin-bottom: 15px;" />
+        <p style="font-size: 11px; color: #94a3b8; line-height: 1.5; margin: 0;">
+          You are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to stop receiving these alerts, you can manage or delete them in your user dashboard, or close your account via the Support page.
         </p>
       </div>
     `;
 
+    const emailText = `Hello ${name || 'Investor'},\n\nThis message is to notify you that your price alert for ${symbol} has been triggered.\n\nTrigger Condition: Price moved ${direction} ₹${targetPrice}\nCurrent Market Price: ₹${currentPrice.toFixed(2)}\n\nTo view your watchlists or manage your notifications, please log in to your InvestIQ dashboard.\n\nSincerely,\nThe InvestIQ Support Team\n\n---\nYou are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to stop receiving these alerts, you can manage or delete them in your user dashboard, or close your account via the Support page.`;
+
     await transporter.sendMail({
       from: '"InvestIQ Alerts" <' + gmailUser + '>',
       to: email,
-      subject: `Alert: ${symbol} is now ₹${currentPrice.toFixed(2)}`,
-      text: `InvestIQ Price Alert Triggered\n\nHi ${name || 'Investor'},\n\nYour price alert for ${symbol} has just been triggered!\nCondition: Price goes ${direction} ₹${targetPrice}\nCurrent Price: ₹${currentPrice.toFixed(2)}\n\nLog in to InvestIQ to view your portfolio and take action.\n\n---\nTo ensure delivery of future alerts, please add this email address to your contacts.\nYou are receiving this automated alert because you configured a price tracker at InvestIQ. If you wish to unsubscribe, you can delete your alert or account via the Support tab.`,
+      subject: `InvestIQ Alert: ${symbol} is ₹${currentPrice.toFixed(2)}`,
+      text: emailText,
       html: emailHtml,
+      headers: {
+        'X-Priority': '3',
+        'X-MSMail-Priority': 'Normal',
+        'Importance': 'Normal',
+        'X-Auto-Response-Suppress': 'OOF, AutoReply',
+        'Feedback-ID': 'price-alert:investiq'
+      }
     });
     return true;
   } catch (error) {
