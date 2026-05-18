@@ -332,9 +332,9 @@ export default function Simulator() {
                           <div>
                             <div style={{ fontSize: '0.9rem', color: '#f8fafc', fontWeight: 'bold' }}>{p.symbol}</div>
                             <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                              Val: {formatPrice(pVal, cur)}
+                              Val: {formatPrice(pVal, cur, { symbol: p.symbol })}
                               {cur !== targetCurrency && ` (₹${Math.round(pVal * (exchangeRates[cur] || 83.5)).toLocaleString('en-IN')})`}
-                              {` · `}{formatPrice(p.price, cur)}/sh
+                              {` · `}{formatPrice(p.price, cur, { symbol: p.symbol })}/sh
                             </div>
                           </div>
                         </div>

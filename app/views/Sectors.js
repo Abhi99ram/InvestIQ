@@ -73,7 +73,7 @@ export default function Sectors({ selectedSector, onSelectStock }) {
                         <tr key={sym} onClick={() => onSelectStock(sym)} style={{ cursor: 'pointer' }}>
                           <td><strong>{sym}</strong></td>
                           <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{d.name}</td>
-                          <td>{d.price != null ? formatPrice(d.price, resolveCurrency(sym, d.currency)) : '-'}</td>
+                          <td>{d.price != null ? formatPrice(d.price, resolveCurrency(sym, d.currency), { symbol: sym }) : '-'}</td>
                           <td className={isGain ? 'gain' : 'loss'}>
                             {isGain ? '▲' : '▼'} {d.changePercent?.toFixed(2)}%
                           </td>

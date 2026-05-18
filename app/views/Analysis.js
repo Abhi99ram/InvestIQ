@@ -360,7 +360,7 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
                 badgeLabel={f.verdict === 'Overvalued' ? '▼ Overvalued' : f.isBullish ? '▲ Bullish' : '▼ Bearish'}
                 trigger={f.trigger}
                 metrics={[
-                  { label: 'Intrinsic Value', value: f.intrinsicValue ? formatPrice(f.intrinsicValue, cur) : 'N/A', color: f.isUndervalued ? 'var(--gain)' : 'var(--text-primary)' },
+                  { label: 'Intrinsic Value', value: f.intrinsicValue ? formatPrice(f.intrinsicValue, cur, { symbol }) : 'N/A', color: f.isUndervalued ? 'var(--gain)' : 'var(--text-primary)' },
                   { label: 'Premium / Discount', value: f.premiumDiscount != null ? `${f.premiumDiscount > 0 ? '+' : ''}${f.premiumDiscount.toFixed(1)}%` : 'N/A', color: f.premiumDiscount > 15 ? 'var(--loss)' : f.premiumDiscount < 0 ? 'var(--gain)' : 'var(--text-primary)' },
                   { label: 'Margin of Safety', value: f.intrinsicValue ? `${Math.max(0, f.marginOfSafety).toFixed(1)}%` : 'N/A', color: f.marginOfSafety > 10 ? 'var(--gain)' : f.marginOfSafety <= 0 ? 'var(--loss)' : 'var(--text-primary)' },
                   { label: 'Debt / Equity', value: f.debtToEquity != null ? `${f.debtToEquity.toFixed(2)}x` : 'N/A', color: f.debtToEquity != null && f.debtToEquity < 1.5 ? 'var(--gain)' : 'var(--loss)' },
@@ -377,8 +377,8 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
                 trigger={t.trigger}
                 metrics={[
                   { label: 'RSI (14)', value: triLayer.layers.technical.rsi14?.toFixed(1) || 'N/A', color: triLayer.layers.technical.rsi14 > 70 ? 'var(--loss)' : triLayer.layers.technical.rsi14 < 30 ? 'var(--gain)' : 'var(--gain)' },
-                  { label: '200 EMA', value: triLayer.layers.technical.ema200 != null ? formatPrice(triLayer.layers.technical.ema200, cur) : 'N/A', color: triLayer.layers.technical.currentPrice > triLayer.layers.technical.ema200 ? 'var(--gain)' : 'var(--loss)' },
-                  { label: '50 EMA', value: triLayer.layers.technical.ema50 != null ? formatPrice(triLayer.layers.technical.ema50, cur) : 'N/A', color: triLayer.layers.technical.ema50 > triLayer.layers.technical.ema200 ? 'var(--gain)' : 'var(--loss)' },
+                  { label: '200 EMA', value: triLayer.layers.technical.ema200 != null ? formatPrice(triLayer.layers.technical.ema200, cur, { symbol }) : 'N/A', color: triLayer.layers.technical.currentPrice > triLayer.layers.technical.ema200 ? 'var(--gain)' : 'var(--loss)' },
+                  { label: '50 EMA', value: triLayer.layers.technical.ema50 != null ? formatPrice(triLayer.layers.technical.ema50, cur, { symbol }) : 'N/A', color: triLayer.layers.technical.ema50 > triLayer.layers.technical.ema200 ? 'var(--gain)' : 'var(--loss)' },
                   { label: 'MACD', value: triLayer.layers.technical.macd?.isBullish ? '▲ Bullish' : '▼ Bearish', color: triLayer.layers.technical.macd?.isBullish ? 'var(--gain)' : 'var(--loss)' },
                   { label: 'Volume', value: triLayer.layers.technical.volumeConfirmed ? '✅ Confirmed' : '⚠️ Weak', color: triLayer.layers.technical.volumeConfirmed ? 'var(--gain)' : 'var(--text-muted)' },
                   { label: 'Signals', value: `${triLayer.layers.technical.bullishCount || 0}/5 Bullish`, color: (triLayer.layers.technical.bullishCount || 0) >= 3 ? 'var(--gain)' : 'var(--loss)' },
@@ -394,8 +394,8 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
                 metrics={[
                   { label: 'Market Verdict', value: triLayer.layers.macro.isBullish ? 'Favorable' : 'Unfavorable', color: triLayer.layers.macro.isBullish ? 'var(--gain)' : 'var(--loss)' },
                   ...(triLayer.targetEntry && triLayer.targetExit ? [
-                    { label: 'Target Entry', value: triLayer.targetEntryFormatted || formatPrice(triLayer.targetEntry, cur), color: 'var(--accent-cyan)' },
-                    { label: 'Target Exit', value: triLayer.targetExitFormatted || formatPrice(triLayer.targetExit, cur), color: 'var(--gain)' },
+                    { label: 'Target Entry', value: triLayer.targetEntryFormatted || formatPrice(triLayer.targetEntry, cur, { symbol }), color: 'var(--accent-cyan)' },
+                    { label: 'Target Exit', value: triLayer.targetExitFormatted || formatPrice(triLayer.targetExit, cur, { symbol }), color: 'var(--gain)' },
                   ] : []),
                 ]}
               />
@@ -444,7 +444,7 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
                       const d = new Date(label);
                       return isNaN(d) ? label : d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
                     }}
-                    formatter={(value) => [formatPrice(Number(value), quote?.currency || triLayer?.currency || 'USD'), 'Closing Price']}
+                    formatter={(value) => [formatPrice(Number(value), quote?.currency || triLayer?.currency || 'USD', { symbol }), 'Closing Price']}
                   />
                   <Line type="monotone" dataKey="close" stroke="var(--accent-cyan)" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
                   <ReferenceLine y={history.length > 0 ? history[history.length-1].close : 0} stroke="var(--accent-cyan)" strokeDasharray="3 3" />

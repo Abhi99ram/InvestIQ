@@ -120,6 +120,24 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // Poll for real-time USD/INR rate to populate global currency formatter registry
+  useEffect(() => {
+    const fetchUsdInr = async () => {
+      try {
+        const res = await fetch(`/api/quote?symbols=USDINR=X&_t=${Date.now()}`);
+        const data = await res.json();
+        if (data && data['USDINR=X'] && data['USDINR=X'].price) {
+          globalThis.USD_INR_RATE = data['USDINR=X'].price;
+        }
+      } catch (e) {
+        console.error('Failed to pre-fetch USD/INR rate', e);
+      }
+    };
+    fetchUsdInr();
+    const interval = setInterval(fetchUsdInr, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Poll for alerts notification count
   useEffect(() => {
     if (!user) return;

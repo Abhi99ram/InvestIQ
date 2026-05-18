@@ -194,7 +194,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
         // 1. Send browser notification
         if ('Notification' in window && Notification.permission === 'granted') {
           const dirText = a.direction === 'above' ? 'above' : a.direction === 'below' ? 'below' : 'equal to';
-          new Notification(`🔔 ${a.symbol} Alert`, { body: `Price ${dirText} ${a.targetPrice} — now at ${formatPrice(price, resolveCurrency(a.symbol, watchlistData[a.symbol]?.currency))}` });
+          new Notification(`🔔 ${a.symbol} Alert`, { body: `Price ${dirText} ${a.targetPrice} — now at ${formatPrice(price, resolveCurrency(a.symbol, watchlistData[a.symbol]?.currency), { symbol: a.symbol })}` });
         }
 
         // 2. Automatically trigger the Email/SMS Backend API
@@ -352,7 +352,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                       <td style={{ color: isInvalid ? 'var(--accent-red)' : 'var(--text-secondary)' }}>
                         {isInvalid ? 'Invalid Symbol' : (d.name || '-')}
                       </td>
-                      <td>{d.price != null ? formatPrice(d.price, resolveCurrency(sym, d.currency)) : '-'}</td>
+                      <td>{d.price != null ? formatPrice(d.price, resolveCurrency(sym, d.currency), { symbol: sym }) : '-'}</td>
                       <td className={isGain ? 'gain' : 'loss'}>{d.changePercent != null ? `${isGain ? '▲' : '▼'} ${d.changePercent.toFixed(2)}%` : '-'}</td>
                       <td style={{ color: 'var(--text-muted)' }}>{d.volume?.toLocaleString() || '-'}</td>
                       <td><button className="btn btn-sm" style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => removeStock(sym)}>✕</button></td>
@@ -483,7 +483,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                   )}
                   {alertSymbolPrice !== null && alertType === 'stock' && (
                     <div style={{ marginTop: 8, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                      Current Price: <strong style={{ color: 'var(--text-primary)' }}>{formatPrice(alertSymbolPrice, resolveCurrency(alertSymbol))}</strong>
+                      Current Price: <strong style={{ color: 'var(--text-primary)' }}>{formatPrice(alertSymbolPrice, resolveCurrency(alertSymbol), { symbol: alertSymbol })}</strong>
                     </div>
                   )}
                 </>
