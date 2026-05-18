@@ -75,6 +75,8 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
       ? 'rgba(16,185,129,0.3)'
       : 'var(--border-color)';
 
+    const usdinrRate = indices['USDINR=X']?.price || 83.50;
+
     return (
       <div
         key={idx.symbol}
@@ -90,10 +92,20 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 4 }}>{idx.exchange}</div>
         {loading
           ? <div className="skeleton" style={{ height: 28, width: '70%', marginBottom: 6 }} />
-          : <div className="index-value">{formatNum(d.price, idx.unit, d.currency || resolveCurrency(idx.symbol))}</div>
+          : (
+            <div>
+              <div className="index-value">{formatNum(d.price, idx.unit, d.currency || resolveCurrency(idx.symbol))}</div>
+              {isCommodity && d.price != null && (
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#10b981', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>≈</span>
+                  <span>{formatPrice(d.price * usdinrRate, 'INR')}</span>
+                </div>
+              )}
+            </div>
+          )
         }
         {!loading && (
-          <div className={`index-change ${isGain ? 'gain' : 'loss'}`}>
+          <div className={`index-change ${isGain ? 'gain' : 'loss'}`} style={{ marginTop: isCommodity ? 4 : 0 }}>
             {d.changePercent != null
               ? <>{isGain ? '▲' : '▼'} {Math.abs(d.changePercent).toFixed(2)}%</>
               : <span style={{ color: 'var(--text-muted)' }}>No data</span>
