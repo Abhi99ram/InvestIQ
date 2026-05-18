@@ -16,7 +16,7 @@ export async function GET(request) {
   try {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ count: 0, alerts: [], error: 'User not found' }, { status: 200 });
     }
 
     let alerts = [];
@@ -39,7 +39,7 @@ export async function POST(request) {
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 });
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user) return NextResponse.json({ success: false, error: 'User not found' }, { status: 200 });
 
     let alerts = [];
     if (user.alerts && Array.isArray(user.alerts)) alerts = user.alerts;

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
  * Permanently prevents broken PWA service workers from hijacking navigations.
  * "executionContexts" clears SW registration; "cache" clears stale HTML/JS (keeps cookies/localStorage).
  */
-const SW_PURGE = '"cache", "executionContexts"';
+const SW_PURGE = '"executionContexts"';
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;

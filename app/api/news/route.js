@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { callAI } from '../../lib/ai-provider';
+import NodeCache from 'node-cache';
 
 export const dynamic = 'force-dynamic';
+
+const newsCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 
 const SIX_MONTHS_MS = 183 * 24 * 60 * 60 * 1000; // 6 months
 
@@ -508,6 +511,14 @@ export async function GET(request) {
     const query   = searchParams.get('q') || '';
     const withAI  = searchParams.get('ai') === '1';
 
+    const cacheKey = `news_${symbol}_${sector}_${region}_${query}_${withAI}`;
+    const cached = newsCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, max-age=300' }
+      });
+    }
+
     let allNews = [];
 
     let queryMustContain = [];
@@ -788,12 +799,12 @@ export async function GET(request) {
       final = process(allNews, 50);
     }
 
-    // Groq AI enrichment (optional, triggered with ?ai=1)
-    if (withAI && final.length > 0) {
-      final = await enrichWithAI(final);
-    }
+    const responseData = { news: final, count: final.length, freshness: '6 months' };
+    newsCache.set(cacheKey, responseData);
 
-    return NextResponse.json({ news: final, count: final.length, freshness: '6 months' });
+    return NextResponse.json(responseData, {
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+    });
   } catch (err) {
     console.error('News API error:', err);
     return NextResponse.json({ error: err.message, news: [] }, { status: 500 });

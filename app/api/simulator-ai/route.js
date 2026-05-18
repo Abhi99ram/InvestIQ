@@ -26,7 +26,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { portfolio = [], periodValue = 1, periodUnit = 'Years', inflationRate = 6, includeInflation = true, totalInvested = 10000 } = reqBody;
+  const { portfolio = [], periodValue = 1, periodUnit = 'Years', inflationRate = 6, includeInflation = true, totalInvested = 10000, targetCurrency = 'USD' } = reqBody;
 
   if (portfolio.length === 0) {
     return NextResponse.json({ error: 'Portfolio is empty' }, { status: 400 });
@@ -107,8 +107,8 @@ export async function POST(request) {
       benchmarkReturns[bmSym] = rets;
     }));
 
-    const assetData = [];
-    await Promise.all(portfolio.map(async (p) => {
+    // 1. Fetch all asset data and calculate converted prices
+    const assetsWithQuotes = await Promise.all(portfolio.map(async (p) => {
       const cacheKey = `ASSET_${p.symbol}`;
       let data = getCached(cacheKey);
       
@@ -139,8 +139,54 @@ export async function POST(request) {
       }
       
       const price = q.regularMarketPrice || p.price;
-      const weight = (p.shares * price) / totalInvested;
+      const pCur = q.currency || (isIndian ? 'INR' : 'USD');
       
+      let conversionRate = 1;
+      if (pCur !== targetCurrency) {
+        if (pCur === 'USD' && targetCurrency === 'INR') {
+          conversionRate = USDINR;
+        } else if (pCur === 'INR' && targetCurrency === 'USD') {
+          conversionRate = 1 / USDINR;
+        } else {
+          try {
+            const exQuote = await yahooFinance.quote(`${pCur}${targetCurrency}=X`);
+            conversionRate = exQuote?.regularMarketPrice || 1;
+          } catch {
+            if (pCur === 'EUR' && targetCurrency === 'INR') conversionRate = 91;
+            else if (pCur === 'GBP' && targetCurrency === 'INR') conversionRate = 106;
+            else if (pCur === 'JPY' && targetCurrency === 'INR') conversionRate = 0.55;
+            else if (pCur === 'CAD' && targetCurrency === 'INR') conversionRate = 61;
+            else if (pCur === 'AUD' && targetCurrency === 'INR') conversionRate = 55;
+            else conversionRate = 1;
+          }
+        }
+      }
+
+      const convertedPrice = price * conversionRate;
+      const convertedValue = p.shares * convertedPrice;
+
+      return {
+        p,
+        q,
+        price,
+        convertedPrice,
+        convertedValue,
+        histPrices,
+        rets,
+        isIndian,
+        isMetal,
+        pCur
+      };
+    }));
+
+    // 2. Calculate total converted value
+    const totalInvestedConverted = assetsWithQuotes.reduce((sum, asset) => sum + asset.convertedValue, 0) || 1;
+
+    // 3. Process each asset to build assetData with correct weights
+    const assetData = [];
+    assetsWithQuotes.forEach(({ p, q, price, convertedPrice, convertedValue, histPrices, rets, isIndian, isMetal, pCur }) => {
+      const weight = convertedValue / totalInvestedConverted;
+
       // UPGRADE 1: Exponentially Weighted Moving Average (EWMA) Volatility
       let stdDevMonthly = 0;
       if (rets.length > 0) {
@@ -188,7 +234,7 @@ export async function POST(request) {
 
       // UPGRADE 3: FX Drift for global portfolios mapped to INR
       let fxDriftAnnual = 0;
-      if (!isIndian && !p.symbol.startsWith('^NSEI') && !p.symbol.endsWith('.BO')) {
+      if (targetCurrency === 'INR' && !isIndian && !p.symbol.startsWith('^NSEI') && !p.symbol.endsWith('.BO')) {
          fxDriftAnnual = 0.025; // Historical average 2.5% INR depreciation vs USD
       }
 
@@ -230,7 +276,7 @@ export async function POST(request) {
         isLimitedData: histPrices.length < 12,
         liquidityPenalty
       });
-    }));
+    });
 
     const N = assetData.length;
     let covMat = Array(N).fill(0).map(() => Array(N).fill(0));
@@ -323,12 +369,12 @@ export async function POST(request) {
     const yearlySnapshots = snapshotYears.map(() => new Float32Array(M_PATHS));
 
     for (let p = 0; p < M_PATHS; p++) {
-      let currentVal = totalInvested;
-      let crisisVal = totalInvested;
+      let currentVal = totalInvestedConverted;
+      let crisisVal = totalInvestedConverted;
       let currentWeights = assetData.map(a => a.weight);
 
       // year 0 always = starting value
-      yearlySnapshots[0][p] = totalInvested;
+      yearlySnapshots[0][p] = totalInvestedConverted;
 
       let snapIdx = 1; // next snapshot to fill
 
@@ -381,9 +427,9 @@ export async function POST(request) {
     const trajectoryPath = [];
     for (let y = 0; y < snapshotYears.length; y++) {
       const snapshot = yearlySnapshots[y].slice().sort((a, b) => a - b);
-      const p5v  = snapshot[Math.floor(0.05 * M_PATHS)] || totalInvested;
-      const p50v = snapshot[Math.floor(0.50 * M_PATHS)] || totalInvested;
-      const p90v = snapshot[Math.floor(0.90 * M_PATHS)] || totalInvested;
+      const p5v  = snapshot[Math.floor(0.05 * M_PATHS)] || totalInvestedConverted;
+      const p50v = snapshot[Math.floor(0.50 * M_PATHS)] || totalInvestedConverted;
+      const p90v = snapshot[Math.floor(0.90 * M_PATHS)] || totalInvestedConverted;
       trajectoryPath.push({
         year: snapshotYears[y],
         p5: p5v,
@@ -400,15 +446,15 @@ export async function POST(request) {
     const p50 = terminalValues[Math.floor(0.50 * M_PATHS)];
     const p90 = terminalValues[Math.floor(0.90 * M_PATHS)];
 
-    const VaR_95 = Math.max(totalInvested - p5, 0);
-    const crisisVaR_95 = Math.max(totalInvested - crisisTerminalValues[Math.floor(0.05 * M_PATHS)], 0);
+    const VaR_95 = Math.max(totalInvestedConverted - p5, 0);
+    const crisisVaR_95 = Math.max(totalInvestedConverted - crisisTerminalValues[Math.floor(0.05 * M_PATHS)], 0);
     
     let tailSum = 0, tailCount = 0;
     for(let i=0; i<Math.floor(0.05 * M_PATHS); i++) {
       tailSum += terminalValues[i];
       tailCount++;
     }
-    const CVaR_95 = Math.max(totalInvested - (tailSum / tailCount), 0);
+    const CVaR_95 = Math.max(totalInvestedConverted - (tailSum / tailCount), 0);
 
     const HHI = assetData.reduce((sum, a) => sum + Math.pow(a.weight, 2), 0);
     
@@ -432,16 +478,16 @@ export async function POST(request) {
     if(riskScore > 50) riskLevel = 'High';
     if(riskScore > 70) riskLevel = 'Very High';
 
-    let projectedCAGR = Math.pow(p50 / totalInvested, 1 / T_years) - 1;
+    let projectedCAGR = Math.pow(p50 / totalInvestedConverted, 1 / T_years) - 1;
     let inflationVal = Number(inflationRate) || 0;
     let realCAGR = includeInflation ? ((1 + projectedCAGR) / (1 + (inflationVal/100))) - 1 : projectedCAGR;
-    let estimatedValueReal = includeInflation ? totalInvested * Math.pow(1 + realCAGR, T_years) : p50;
+    let estimatedValueReal = includeInflation ? totalInvestedConverted * Math.pow(1 + realCAGR, T_years) : p50;
 
     const sharpeRatio = (projectedCAGR - riskFreeRateAnnual) / portVolAnnual;
 
     let pathsBelowMed = [];
     for(let p=0; p<M_PATHS; p++) {
-      let r = Math.pow(terminalValues[p]/totalInvested, 1/T_years) - 1;
+      let r = Math.pow(terminalValues[p]/totalInvestedConverted, 1/T_years) - 1;
       if (r < riskFreeRateAnnual) pathsBelowMed.push(r);
     }
     let stdDownside = pathsBelowMed.length > 0 ? math.std(pathsBelowMed) : 0.001;
@@ -449,9 +495,9 @@ export async function POST(request) {
     let sortino = (projectedCAGR - riskFreeRateAnnual) / stdDownside;
 
     const stressTests = [
-      { name: "2008 Financial Crisis", dropPct: 0.55, dropVal: totalInvested * 0.55 },
-      { name: "2020 Covid Crash", dropPct: 0.35, dropVal: totalInvested * 0.35 },
-      { name: "Crisis Correlation (r=0.85)", dropPct: crisisVaR_95 / totalInvested, dropVal: crisisVaR_95 }
+      { name: "2008 Financial Crisis", dropPct: 0.55, dropVal: totalInvestedConverted * 0.55 },
+      { name: "2020 Covid Crash", dropPct: 0.35, dropVal: totalInvestedConverted * 0.35 },
+      { name: "Crisis Correlation (r=0.85)", dropPct: crisisVaR_95 / totalInvestedConverted, dropVal: crisisVaR_95 }
     ];
 
     const distributionPoints = [];
@@ -493,7 +539,7 @@ export async function POST(request) {
     const hasAdvancedModeling = true;
 
     // UPGRADE 5: Real-World Tax Drag Modeling (LTCG in India)
-    let capitalGains = p50 - totalInvested;
+    let capitalGains = p50 - totalInvestedConverted;
     let estimatedTax = 0;
     if (capitalGains > 125000) {
       estimatedTax = (capitalGains - 125000) * 0.125; // 12.5% LTCG over 1.25L
@@ -509,10 +555,12 @@ export async function POST(request) {
     };
 
     const groqApiKey = process.env.GROQ_API_KEY;
-    if (!groqApiKey) return generateFallback(metricsPayload, totalInvested);
+    if (!groqApiKey) return generateFallback(metricsPayload, totalInvestedConverted);
 
     const prompt = `
 You are a senior portfolio analyst at a top-tier asset management firm. You will receive a structured JSON of pre-computed quantitative metrics for a client's portfolio. Your role is to interpret these numbers, identify the most critical risks and opportunities, and produce a coherent, specific, and actionable investment recommendation. You are NOT allowed to recalculate numbers.
+
+All monetary values in the payload and in your narrative interpretations are represented in the target currency: ${targetCurrency}. Under no circumstances should you confuse this with any other currency.
 
 METRICS PAYLOAD:
 ${JSON.stringify(metricsPayload, null, 2)}

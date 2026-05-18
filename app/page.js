@@ -1,16 +1,29 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import Dashboard from './views/Dashboard';
-import Sectors from './views/Sectors';
-import Companies from './views/Companies';
-import Watchlist from './views/Watchlist';
-import Analysis from './views/Analysis';
-import NewsFeed from './views/NewsFeed';
-import Admin from './views/Admin';
-import MyAccount from './views/MyAccount';
-import Support from './views/Support';
-import Simulator from './views/Simulator';
-import Auth from './views/Auth';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+
+const LoadingPlaceholder = () => (
+  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '350px', width: '100%', gap: '15px' }}>
+    <div style={{ position: 'relative', width: '40px', height: '40px' }}>
+      <div style={{ position: 'absolute', inset: 0, border: '3px solid rgba(56,189,248,0.1)', borderRadius: '50%' }}></div>
+      <div style={{ position: 'absolute', inset: 0, border: '3px solid transparent', borderTopColor: '#38bdf8', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+    </div>
+    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500 }}>Loading section...</span>
+  </div>
+);
+
+const Dashboard = dynamic(() => import('./views/Dashboard'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const Sectors = dynamic(() => import('./views/Sectors'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const Companies = dynamic(() => import('./views/Companies'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const Watchlist = dynamic(() => import('./views/Watchlist'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const Analysis = dynamic(() => import('./views/Analysis'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const NewsFeed = dynamic(() => import('./views/NewsFeed'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const Admin = dynamic(() => import('./views/Admin'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const MyAccount = dynamic(() => import('./views/MyAccount'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const Support = dynamic(() => import('./views/Support'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const Simulator = dynamic(() => import('./views/Simulator'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const Auth = dynamic(() => import('./views/Auth'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+
 
 import { LayoutDashboard, Factory, Building2, Star, LineChart, Newspaper, Calculator, UserIcon, Headphones } from 'lucide-react';
 
@@ -40,6 +53,38 @@ export default function Home() {
   // System Update Checker State
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateVersion, setUpdateVersion] = useState(null);
+
+  // Helper to change page state and sync with URL query params
+  const changePage = useCallback((pageId) => {
+    setActivePage(pageId);
+    setSidebarOpen(false);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('page', pageId);
+      window.history.pushState({}, '', url.pathname + url.search);
+    } catch (e) {
+      console.error('Failed to update URL query parameter:', e);
+    }
+  }, []);
+
+  // Sync page state with URL query parameter '?page=...' on mount and popstate events
+  useEffect(() => {
+    const handleUrlChange = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const pageParam = params.get('page');
+        if (pageParam && NAV_ITEMS.some(item => item.id === pageParam)) {
+          setActivePage(pageParam);
+        }
+      } catch (e) {
+        console.error('Failed to sync page from URL:', e);
+      }
+    };
+
+    handleUrlChange();
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, []);
 
   // Load user from localStorage on mount (safe parse — corrupt data must not crash the app)
   useEffect(() => {
@@ -127,14 +172,14 @@ export default function Home() {
 
   const selectStock = (symbol) => {
     setSelectedSymbol(symbol);
-    setActivePage('companies');
+    changePage('companies');
     setShowSearch(false);
     setSearchQuery('');
   };
 
   const viewSector = (sector) => {
     setSelectedSector(sector);
-    setActivePage('sectors');
+    changePage('sectors');
   };
 
   const renderPage = () => {
@@ -238,7 +283,7 @@ export default function Home() {
             <div className="nav-section-title">Menu</div>
             {NAV_ITEMS.map(item => (
               <button key={item.id} className={`nav-link ${activePage === item.id ? 'active' : ''}`}
-                onClick={() => { setActivePage(item.id); setSidebarOpen(false); }}>
+                onClick={() => changePage(item.id)}>
                 <span className="nav-icon">{item.icon}</span>{item.label}
               </button>
             ))}
@@ -308,7 +353,7 @@ export default function Home() {
             <div className="market-badge"><span className="dot"></span>LIVE</div>
           </div>
           <button className="notification-btn" onClick={async () => {
-            setActivePage('watchlist');
+            changePage('watchlist');
             if (notifCount > 0) {
               setNotifCount(0);
               fetch('/api/user/notifications', {

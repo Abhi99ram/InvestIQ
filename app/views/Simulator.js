@@ -40,6 +40,7 @@ export default function Simulator() {
   const [results, setResults] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [loadingStepIdx, setLoadingStepIdx] = useState(0);
+  const [exchangeRates, setExchangeRates] = useState({ USD: 83.5, EUR: 91.0, GBP: 106.0 });
 
   const handleSearch = async (q) => {
     setSearchQuery(q);
@@ -75,21 +76,64 @@ export default function Simulator() {
     } catch (e) { alert("Could not fetch price."); }
   };
 
-  const portfolioTotals = useMemo(() => sumByCurrency(portfolio), [portfolio]);
-  const currentPortfolioValue = useMemo(() => Object.values(portfolioTotals).reduce((a, b) => a + b, 0), [portfolioTotals]);
-  const primaryCurrency = useMemo(() => {
-    const set = new Set(portfolio.map(p => p.currency || resolveCurrency(p.symbol)));
-    return set.size === 1 ? [...set][0] : 'USD';
+  const targetCurrency = useMemo(() => {
+    const currencies = [...new Set(portfolio.map(p => p.currency || resolveCurrency(p.symbol)))];
+    if (currencies.length > 1 || currencies.includes('INR')) return 'INR';
+    return currencies[0] || 'USD';
   }, [portfolio]);
 
-  // Refresh live prices for portfolio assets
+  const convertedPortfolio = useMemo(() => {
+    return portfolio.map(p => {
+      const cur = p.currency || resolveCurrency(p.symbol);
+      let rate = 1;
+      if (cur !== targetCurrency) {
+        if (cur === 'USD' && targetCurrency === 'INR') rate = exchangeRates.USD || 83.5;
+        else if (cur === 'INR' && targetCurrency === 'USD') rate = 1 / (exchangeRates.USD || 83.5);
+        else {
+          rate = exchangeRates[cur] || 1;
+        }
+      }
+      return {
+        ...p,
+        convertedPrice: p.price * rate,
+        convertedValue: p.price * p.shares * rate,
+      };
+    });
+  }, [portfolio, targetCurrency, exchangeRates]);
+
+  const portfolioTotals = useMemo(() => sumByCurrency(portfolio), [portfolio]);
+  const currentPortfolioValue = useMemo(() => convertedPortfolio.reduce((sum, p) => sum + p.convertedValue, 0), [convertedPortfolio]);
+  const primaryCurrency = targetCurrency;
+
+  // Refresh live prices for portfolio assets & exchange rates
+  const portfolioSymbolsKey = useMemo(() => portfolio.map(p => p.symbol).join(','), [portfolio]);
   useEffect(() => {
     if (portfolio.length === 0) return;
     const refresh = async () => {
       try {
-        const symbols = portfolio.map(p => p.symbol).join(',');
-        const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbols)}&_t=${Date.now()}`);
+        const localPortfolio = portfolioSymbolsKey.split(',').map(sym => portfolio.find(p => p.symbol === sym)).filter(Boolean);
+        if (localPortfolio.length === 0) return;
+
+        const currencies = [...new Set(localPortfolio.map(p => p.currency || resolveCurrency(p.symbol)))];
+        const exchangeSymbols = currencies
+          .filter(c => c && c !== 'INR')
+          .map(c => `${c}INR=X`);
+        
+        const allSymbols = [...localPortfolio.map(p => p.symbol), ...exchangeSymbols];
+        const res = await fetch(`/api/quote?symbols=${encodeURIComponent(allSymbols.join(','))}&_t=${Date.now()}`);
         const data = await res.json();
+        
+        // Update exchange rates
+        const newRates = { ...exchangeRates };
+        exchangeSymbols.forEach(sym => {
+          const cur = sym.substring(0, 3);
+          if (data[sym]?.price) {
+            newRates[cur] = data[sym].price;
+          }
+        });
+        setExchangeRates(newRates);
+
+        // Update portfolio asset prices
         setPortfolio(prev => prev.map(p => {
           const q = data[p.symbol];
           if (!q?.price) return p;
@@ -100,7 +144,7 @@ export default function Simulator() {
     refresh();
     const id = setInterval(refresh, 5000);
     return () => clearInterval(id);
-  }, [portfolio.length]);
+  }, [portfolioSymbolsKey]);
 
   const handleSharesChange = (symbol, sharesStr) => {
     const s = Number(sharesStr);
@@ -117,19 +161,21 @@ export default function Simulator() {
     const targetValForSymbol = targetFraction * currentTotalVal;
     const remainingValForOthers = currentTotalVal - targetValForSymbol;
     
-    const others = portfolio.filter(p => p.symbol !== symbol);
-    const currentOthersVal = others.reduce((acc, p) => acc + (p.price * p.shares), 0);
+    const others = convertedPortfolio.filter(p => p.symbol !== symbol);
+    const currentOthersVal = others.reduce((acc, p) => acc + p.convertedValue, 0);
     
     const newPortfolio = portfolio.map(p => {
       if (p.symbol === symbol) {
-        let newShares = Math.max(1, Math.round(targetValForSymbol / p.price));
+        const convertedP = convertedPortfolio.find(x => x.symbol === symbol);
+        let newShares = Math.max(1, Math.round(targetValForSymbol / convertedP.convertedPrice));
         return { ...p, shares: newShares };
       } else {
         if (currentOthersVal === 0) return p;
-        let theirCurrentVal = p.price * p.shares;
+        const convertedP = convertedPortfolio.find(x => x.symbol === p.symbol);
+        let theirCurrentVal = convertedP.convertedValue;
         let theirFractionOfOthers = theirCurrentVal / currentOthersVal;
         let theirNewVal = theirFractionOfOthers * remainingValForOthers;
-        let newShares = Math.max(1, Math.round(theirNewVal / p.price));
+        let newShares = Math.max(1, Math.round(theirNewVal / convertedP.convertedPrice));
         return { ...p, shares: newShares };
       }
     });
@@ -155,7 +201,7 @@ export default function Simulator() {
       const res = await fetch('/api/simulator-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ portfolio, periodValue, periodUnit, inflationRate, includeInflation, totalInvested: currentPortfolioValue })
+        body: JSON.stringify({ portfolio, periodValue, periodUnit, inflationRate, includeInflation, totalInvested: currentPortfolioValue, targetCurrency })
       });
       const data = await res.json();
       clearInterval(interval);
@@ -273,7 +319,9 @@ export default function Simulator() {
                   if (p.symbol.includes('-USD')) icon = '🪙';
                   
                   const pVal = p.price * p.shares;
-                  const pPct = currentPortfolioValue > 0 ? (pVal / currentPortfolioValue) * 100 : 0;
+                  const convertedP = convertedPortfolio.find(x => x.symbol === p.symbol) || { convertedValue: 0 };
+                  const pPct = currentPortfolioValue > 0 ? (convertedP.convertedValue / currentPortfolioValue) * 100 : 0;
+                  const cur = p.currency || resolveCurrency(p.symbol);
                   
                   return (
                     <div key={p.symbol} style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(2,6,23,0.4)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(51,65,85,0.5)', transition: 'border-color 0.2s ease' }} className="asset-card">
@@ -283,7 +331,11 @@ export default function Simulator() {
                           <div style={{ background: 'rgba(51,65,85,0.4)', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>{icon}</div>
                           <div>
                             <div style={{ fontSize: '0.9rem', color: '#f8fafc', fontWeight: 'bold' }}>{p.symbol}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Val: {formatPrice(pVal, p.currency || resolveCurrency(p.symbol))} · {formatPrice(p.price, p.currency || resolveCurrency(p.symbol))}/sh</div>
+                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                              Val: {formatPrice(pVal, cur)}
+                              {cur !== targetCurrency && ` (₹${Math.round(pVal * (exchangeRates[cur] || 83.5)).toLocaleString('en-IN')})`}
+                              {` · `}{formatPrice(p.price, cur)}/sh
+                            </div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -306,9 +358,17 @@ export default function Simulator() {
               </div>
             )}
             
-            <div style={{ marginTop: '20px', padding: '20px', background: 'rgba(15,23,42,0.6)', borderRadius: '12px', border: '1px dashed rgba(51,65,85,0.8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Total Invested</span>
-              <strong style={{ color: '#38bdf8', fontSize: '1.4rem' }}>{formatMultiCurrencyTotals(portfolioTotals)}</strong>
+            <div style={{ marginTop: '20px', padding: '20px', background: 'rgba(15,23,42,0.6)', borderRadius: '12px', border: '1px dashed rgba(51,65,85,0.8)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Total Invested</span>
+                <strong style={{ color: '#38bdf8', fontSize: '1.4rem' }}>{formatMultiCurrencyTotals(portfolioTotals)}</strong>
+              </div>
+              {Object.keys(portfolioTotals).length > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(51,65,85,0.4)', paddingTop: '8px' }}>
+                  <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Converted Value</span>
+                  <strong style={{ color: '#10b981', fontSize: '1.1rem' }}>{formatPrice(currentPortfolioValue, targetCurrency)}</strong>
+                </div>
+              )}
             </div>
 
             {results && results.metrics.optimalWeights && (
@@ -396,7 +456,7 @@ export default function Simulator() {
                   {includeInflation && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '5px' }}>*Purchasing power adjusted for {inflationRate}% inflation</div>}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+                <div className="metrics-grid">
                   <MetricCard title="Real CAGR" value={`${(m.realCAGR * 100).toFixed(2)}%`} highlight={m.realCAGR > 0} sub={m.hasDividends ? "Includes Dividends" : "CAPM Derived"} />
                   <MetricCard title="Sharpe Ratio" value={m.sharpeRatio.toFixed(2)} highlight={m.sharpeRatio > 1} sub="Risk-adjusted Return" />
                   <MetricCard title="Sortino Ratio" value={m.sortino.toFixed(2)} highlight={m.sortino > 1.5} sub="Downside Protection" />
@@ -407,7 +467,7 @@ export default function Simulator() {
               {/* SECTOR & GEO HEATMAP */}
               <div style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)', padding: '30px', borderRadius: '24px', border: '1px solid rgba(51,65,85,0.4)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }} className="print-border-visible">
                 <h4 style={{ margin: '0 0 20px 0', color: '#fff', fontSize: '1.1rem' }}>Diversification Heatmap</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                <div className="heatmap-grid">
                   <div>
                     <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '10px' }}>Geographic Exposure</div>
                     <HeatmapBar data={m.assets} groupKey="geo" colors={['#38bdf8', '#8b5cf6', '#ec4899']} />
@@ -450,7 +510,7 @@ export default function Simulator() {
                     {m.riskLevel} ({m.riskScore}/100)
                   </span>
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px' }}>
+                <div className="risk-grid">
                   <div style={{ background: 'rgba(2,6,23,0.6)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
                     <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '5px' }}>VaR (95%)</div>
                     <div style={{ fontSize: '1.1rem', color: '#ef4444', fontWeight: 'bold' }}>-{formatPrice(m.VaR_95, primaryCurrency)}</div>
@@ -478,7 +538,7 @@ export default function Simulator() {
                 </h4>
                 <p style={{ fontSize: '1rem', lineHeight: '1.6', color: '#cbd5e1', margin: '0 0 25px 0' }}>{ai.narrativeSummary}</p>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+                <div className="ai-grid">
                   <div style={{ background: 'rgba(2,6,23,0.5)', padding: '20px', borderRadius: '16px', borderLeft: '4px solid #ef4444' }}>
                     <strong style={{ display: 'block', fontSize: '0.8rem', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Top Risk Vector</strong>
                     <span style={{ fontSize: '0.95rem', color: '#f8fafc' }}>{ai.topRisk}</span>
@@ -516,6 +576,72 @@ export default function Simulator() {
         </div>
       </div>
       <style dangerouslySetInnerHTML={{__html: `
+        .metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 20px;
+        }
+        @media (max-width: 900px) {
+          .metrics-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .metrics-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        .heatmap-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 30px;
+        }
+        @media (max-width: 768px) {
+          .heatmap-grid {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+          }
+        }
+
+        .risk-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 15px;
+        }
+        @media (max-width: 900px) {
+          .risk-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .risk-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        .ai-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin-bottom: 25px;
+        }
+        @media (max-width: 768px) {
+          .ai-grid {
+            grid-template-columns: 1fr !important;
+            gap: 15px !important;
+          }
+        }
+
+        @media (max-width: 1024px) {
+          .layout-grid {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+          }
+        }
+
         @keyframes spin { 100% { transform: rotate(360deg); } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .search-result-row:hover { background: rgba(56, 189, 248, 0.1) !important; }
