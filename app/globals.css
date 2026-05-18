@@ -760,17 +760,17 @@ a:hover { color: #7dd3fc; }
     display: block !important;
     flex: 1;
     max-width: none;
-    margin: 0 8px;
+    margin: 0 4px;
   }
   .header .search-box input {
-    padding: 8px 12px 8px 32px;
-    font-size: 0.85rem;
-    height: 38px;
-    border-radius: 10px;
+    padding: 6px 10px 6px 26px;
+    font-size: 0.8rem;
+    height: 35px;
+    border-radius: 8px;
   }
   .header .search-box .search-icon {
-    left: 12px;
-    font-size: 0.85rem;
+    left: 10px;
+    font-size: 0.8rem;
   }
   .header .search-results {
     position: absolute;
@@ -779,7 +779,33 @@ a:hover { color: #7dd3fc; }
     z-index: 9999;
   }
   .market-status {
-    display: none !important; /* Hide market status on mobile to make room for search */
+    display: flex !important;
+    align-items: center;
+    gap: 4px !important;
+    margin-left: auto;
+  }
+  .market-status span {
+    font-size: 0.78rem !important;
+    font-weight: 600;
+    max-width: 75px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--accent-cyan) !important;
+  }
+  .market-badge {
+    display: none !important;
+  }
+  .logout-text {
+    display: none !important;
+  }
+  .logout-icon {
+    display: inline !important;
+    font-size: 0.95rem;
+  }
+  .header-logout-btn {
+    padding: 6px 10px !important;
+    margin-left: 4px !important;
   }
   .page-container { overflow: visible; }
 }

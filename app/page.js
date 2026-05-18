@@ -365,8 +365,9 @@ export default function Home() {
           }}>
             🔔 {notifCount > 0 && <span className="notification-badge">{notifCount}</span>}
           </button>
-          <button onClick={handleLogout} className="btn-secondary btn-sm" style={{ marginLeft: '10px' }}>
-            Logout
+          <button onClick={handleLogout} className="btn-secondary btn-sm header-logout-btn" style={{ marginLeft: '10px' }}>
+            <span className="logout-text">Logout</span>
+            <span className="logout-icon" style={{ display: 'none' }}>🚪</span>
           </button>
         </header>
 
