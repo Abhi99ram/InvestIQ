@@ -85,7 +85,18 @@ export async function GET(request) {
   if (toFetch.length > 0) {
     const fetchPromises = toFetch.map(async (symbol) => {
       try {
-        const quote = await yahooFinance.quote(symbol);
+        let quote;
+        try {
+          quote = await yahooFinance.quote(symbol);
+        } catch (err) {
+          if (symbol === 'CL=F') {
+            console.warn('WTI Crude (CL=F) failed, falling back to Brent Crude (BZ=F)...');
+            quote = await yahooFinance.quote('BZ=F');
+            quote.symbol = 'CL=F'; // Keep requested symbol for mapping
+          } else {
+            throw err;
+          }
+        }
         const COMMODITY_MAP = { 'GC=F': 'Gold', 'SI=F': 'Silver', 'CL=F': 'Crude Oil', 'BZ=F': 'Brent Crude', 'NG=F': 'Natural Gas' };
         const data = {
           symbol: quote.symbol, name: COMMODITY_MAP[symbol] || quote.shortName || quote.longName || symbol,

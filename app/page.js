@@ -285,7 +285,7 @@ export default function Home() {
             inset: 0,
             background: 'rgba(0, 0, 0, 0.4)',
             backdropFilter: 'blur(4px)',
-            zIndex: 99,
+            zIndex: 249,
           }}
         />
       )}
