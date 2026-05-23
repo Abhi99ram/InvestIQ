@@ -166,7 +166,7 @@ export default function Auth({ onLogin }) {
           </h2>
           {mode === 'forgot' && (
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 6 }}>
-              Enter your registered email OR mobile number to receive a 6-digit OTP
+              Enter your registered email to receive a 6-digit OTP
             </p>
           )}
           {mode === 'otp' && (
@@ -234,13 +234,13 @@ export default function Auth({ onLogin }) {
           </form>
         )}
 
-        {/* FORGOT PASSWORD — Enter Email or Mobile */}
+        {/* FORGOT PASSWORD — Enter Email */}
         {mode === 'forgot' && (
           <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label className="form-label">Registered Email or Mobile Number</label>
-              <input type="text" style={inputStyle} value={identifier} onChange={e => setIdentifier(e.target.value)}
-                required placeholder="Email or 10-digit mobile" />
+              <label className="form-label">Registered Email</label>
+              <input type="email" style={inputStyle} value={identifier} onChange={e => setIdentifier(e.target.value)}
+                required placeholder="you@example.com" />
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px' }} disabled={loading}>
               {loading ? '⏳ Sending OTP...' : '🚀 Send OTP'}

@@ -39,13 +39,7 @@ async function sendEmailOtp(email, otp) {
       subject: `InvestIQ Security Verification Code: ${otp}`,
       text: emailText,
       html: emailHtml,
-      headers: {
-        'X-Priority': '1',
-        'X-MSMail-Priority': 'High',
-        'Importance': 'high',
-        'X-Auto-Response-Suppress': 'OOF, AutoReply',
-        'Feedback-ID': 'otp:investiq'
-      }
+      replyTo: 'investiq.helpdesk@gmail.com'
     });
     console.log(`[OTP Email] Sent to ${email} successfully.`);
     return true;
@@ -96,13 +90,7 @@ async function sendWelcomeEmail(email, name) {
       subject: `Welcome to InvestIQ - Your Account Details`,
       text: emailText,
       html: emailHtml,
-      headers: {
-        'X-Priority': '3',
-        'X-MSMail-Priority': 'Normal',
-        'Importance': 'Normal',
-        'X-Auto-Response-Suppress': 'OOF, AutoReply',
-        'Feedback-ID': 'welcome:investiq'
-      }
+      replyTo: 'investiq.helpdesk@gmail.com'
     });
     return true;
   } catch (error) {
@@ -210,16 +198,15 @@ export async function POST(request) {
     if (action === 'send-otp') {
       if (!identifier) return NextResponse.json({ error: 'Identifier required' }, { status: 400 });
 
-      const isEmail = identifier.includes('@');
-      let user = null;
-      if (isEmail) {
-        user = await getUserByEmail(identifier);
-      } else {
-        user = await getUserByMobile(identifier);
+      if (!identifier.includes('@')) {
+        return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 });
       }
 
+      const isEmail = true;
+      let user = await getUserByEmail(identifier);
+
       if (!user) {
-        return NextResponse.json({ error: 'No account found with this identifier' }, { status: 404 });
+        return NextResponse.json({ error: 'No account found with this email' }, { status: 404 });
       }
 
       // Generate 6-digit OTP
@@ -228,12 +215,7 @@ export async function POST(request) {
       // Store OTP securely in Prisma database
       await saveOtp(identifier, otp, isEmail);
 
-      let sent = false;
-      if (isEmail) {
-        sent = await sendEmailOtp(identifier, otp);
-      } else {
-        sent = await sendSmsOtp(identifier, otp);
-      }
+      const sent = await sendEmailOtp(identifier, otp);
 
       if (!sent) {
         console.log(`[OTP FALLBACK] To: ${identifier} | OTP: ${otp}`);
@@ -248,7 +230,7 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Identifier and OTP required' }, { status: 400 });
       }
       
-      const isEmail = identifier.includes('@');
+      const isEmail = true;
       const isValid = await verifyOtp(identifier, password, isEmail);
       
       if (!isValid) {
@@ -263,21 +245,14 @@ export async function POST(request) {
       if (!identifier || !password) {
         return NextResponse.json({ error: 'Identifier and new password required' }, { status: 400 });
       }
-      const isEmail = identifier.includes('@');
       
-      let user = null;
-      if (isEmail) user = await getUserByEmail(identifier);
-      else user = await getUserByMobile(identifier);
+      const user = await getUserByEmail(identifier);
       
       if (!user) {
         return NextResponse.json({ error: 'No account found' }, { status: 404 });
       }
 
-      if (isEmail) {
-        await updateUserPasswordByEmail(identifier, password);
-      } else {
-        await updateUserPassword(identifier, password);
-      }
+      await updateUserPasswordByEmail(identifier, password);
 
       return NextResponse.json({ success: true, message: 'Password reset successfully' });
     }
