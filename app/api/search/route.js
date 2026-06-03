@@ -18,7 +18,19 @@ export async function GET(request) {
   if (cached && Date.now() - cached.time < CACHE_TTL) return NextResponse.json(cached.data);
 
   try {
-    const result = await yahooFinance.search(q);
+    let result;
+    try {
+      // Suppress annoying validation logs for this specific call since Yahoo changed schema
+      yahooFinance._env.primitives.logger.warn = () => {};
+      yahooFinance._env.primitives.logger.error = () => {};
+      result = await yahooFinance.search(q);
+    } catch (err) {
+      if (err.name === 'FailedYahooValidationError' && err.result) {
+        result = err.result;
+      } else {
+        throw err;
+      }
+    }
     
     const data = {
       results: (result.quotes || [])
