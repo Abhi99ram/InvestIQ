@@ -4,7 +4,7 @@ import { SECTORS } from '../../../lib/sectors';
 
 export const dynamic = 'force-dynamic';
 
-const yahooFinance = new YahooFinance();
+const yahooFinance = new YahooFinance({ validation: { logErrors: false } });
 const cache = new Map();
 const CACHE_TTL = 30 * 1000;
 
@@ -20,9 +20,6 @@ export async function GET(request) {
   try {
     let result;
     try {
-      // Suppress annoying validation logs for this specific call since Yahoo changed schema
-      yahooFinance._env.primitives.logger.warn = () => {};
-      yahooFinance._env.primitives.logger.error = () => {};
       result = await yahooFinance.search(q);
     } catch (err) {
       if (err.name === 'FailedYahooValidationError' && err.result) {
