@@ -98,23 +98,27 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
         const q = data[sym];
         if (!q || !q.price) return;
 
+        // Auto-pause aggressive polling if the market is closed (saves API calls)
+        if (q.marketState && q.marketState !== 'REGULAR') {
+          setIsLive(false);
+          if (liveInterval.current) clearInterval(liveInterval.current);
+        }
+
         setQuote(q);
         setLastUpdate(new Date());
 
         // Update the last candle on the chart with current price
         if (seriesRef.current && q.price) {
           const tzOffset = new Date().getTimezoneOffset() * 60;
-          const now = Math.floor(Date.now() / 1000) - tzOffset;
+          const targetTimestampMs = q.marketTime ? q.marketTime : Date.now();
+          const targetTimeS = Math.floor(targetTimestampMs / 1000) - tzOffset;
           // Round to nearest minute for intraday, or day for daily
           const timeUnit = period === '1d' ? 60 : period === '1w' ? 900 : 86400;
-          const roundedTime = Math.floor(now / timeUnit) * timeUnit;
+          const roundedTime = Math.floor(targetTimeS / timeUnit) * timeUnit;
 
           seriesRef.current.update({
             time: roundedTime,
-            open: q.open || q.price,
-            high: Math.max(q.dayHigh || q.price, q.price),
-            low: Math.min(q.dayLow || q.price, q.price),
-            close: q.price,
+            value: q.price,
           });
         }
       } catch (e) { /* silent */ }
@@ -148,16 +152,32 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
         rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
         timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: true, secondsVisible: period === '1d' },
       });
-      const series = chart.addSeries(lc.CandlestickSeries, {
-        upColor: '#34d399', downColor: '#f87171',
-        borderUpColor: '#34d399', borderDownColor: '#f87171',
-        wickUpColor: '#34d399', wickDownColor: '#f87171',
-      });
       const tzOffset = new Date().getTimezoneOffset() * 60;
-      const chartData = history.map(q => ({
+      const rawChartData = history.map(q => ({
         time: Math.floor(new Date(q.date).getTime() / 1000) - tzOffset,
-        open: q.open, high: q.high, low: q.low, close: q.close,
-      })).filter(d => d.open && d.close);
+        value: q.close,
+      })).filter(d => d.value != null);
+
+      // Prevent LightweightCharts Error: "Data must be ordered by time" and remove duplicates
+      rawChartData.sort((a, b) => a.time - b.time);
+      const chartData = [];
+      const seen = new Set();
+      for (const d of rawChartData) {
+        if (!seen.has(d.time)) {
+          seen.add(d.time);
+          chartData.push(d);
+        }
+      }
+
+      const isChartGain = chartData.length > 1 ? chartData[chartData.length - 1].value >= chartData[0].value : true;
+
+      const series = chart.addSeries(lc.AreaSeries, {
+        lineColor: isChartGain ? '#34d399' : '#f87171',
+        topColor: isChartGain ? 'rgba(52, 211, 153, 0.4)' : 'rgba(248, 113, 113, 0.4)',
+        bottomColor: isChartGain ? 'rgba(52, 211, 153, 0.0)' : 'rgba(248, 113, 113, 0.0)',
+        lineWidth: 2,
+      });
+
       series.setData(chartData);
       chart.timeScale().fitContent();
       chartInstance.current = chart;
@@ -206,10 +226,16 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
         <h1 className="section-title">🏢 Company Explorer</h1>
         {symbol && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button className={`btn ${isLive ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={toggleLive} style={{ fontSize: '0.8rem' }}>
-              {isLive ? '🔴 LIVE' : '⏸ Paused'}
-            </button>
+            {quote && quote.marketState && quote.marketState !== 'REGULAR' ? (
+              <button className="btn btn-secondary" disabled style={{ fontSize: '0.8rem', opacity: 0.8 }}>
+                ⏸ Market {quote.marketState}
+              </button>
+            ) : (
+              <button className={`btn ${isLive ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={toggleLive} style={{ fontSize: '0.8rem' }}>
+                {isLive ? '🔴 LIVE' : '⏸ Paused'}
+              </button>
+            )}
             <button className="btn btn-secondary" onClick={refreshNow} style={{ fontSize: '0.8rem' }}>
               🔄 Refresh
             </button>

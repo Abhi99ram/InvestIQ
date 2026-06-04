@@ -30,7 +30,11 @@ export async function GET(request) {
       '5y': { period1: new Date(Date.now() - 5 * 365 * 24 * 3600000), interval: '1wk' },
     };
     const config = periodMap[period] || periodMap['1y'];
-    const result = await yahooFinance.chart(symbol, { period1: config.period1, interval: config.interval });
+    const result = await yahooFinance.chart(symbol, { 
+      period1: config.period1, 
+      interval: config.interval,
+      includePrePost: false 
+    });
     const data = {
       symbol,
       period,

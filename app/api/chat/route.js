@@ -119,12 +119,13 @@ export async function POST(request) {
     const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.text || '';
     const msgLower = lastUserMsg.toLowerCase();
 
-    // Fetch live market snapshot in parallel with news
+    const activeSymbol = contextData?.symbol || '';
+    const queryTerm = activeSymbol ? `${lastUserMsg} ${activeSymbol}` : lastUserMsg;
+
+    // Always fetch latest news so Sentinel AI has real-time awareness and isn't guessing
     const [liveData, recentNews] = await Promise.all([
       fetchLiveMarketSnapshot(),
-      (msgLower.includes('news') || msgLower.includes('latest') || msgLower.includes('today') || msgLower.length < 50)
-        ? fetchLatestNews(lastUserMsg)
-        : Promise.resolve([]),
+      fetchLatestNews(queryTerm)
     ]);
 
     // Add news context if available

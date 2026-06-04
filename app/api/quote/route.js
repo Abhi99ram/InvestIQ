@@ -23,7 +23,7 @@ async function fetchLiveUSDINR() {
   try {
     const quote = await yahooFinance.quote('USDINR=X');
     if (quote && quote.regularMarketPrice) {
-      return quote.regularMarketPrice;
+      return { price: quote.regularMarketPrice, changePercent: quote.regularMarketChangePercent || null };
     }
   } catch (e) {
     console.error('Yahoo Finance USDINR=X quote fetch failed:', e.message);
@@ -34,7 +34,7 @@ async function fetchLiveUSDINR() {
     const res = await fetch('https://open.er-api.com/v6/latest/USD');
     const data = await res.json();
     if (data && data.rates && data.rates.INR) {
-      return data.rates.INR;
+      return { price: data.rates.INR, changePercent: null };
     }
   } catch (e) {
     console.error('Open ER-API USD/INR fetch failed:', e.message);
@@ -45,7 +45,7 @@ async function fetchLiveUSDINR() {
     const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
     const data = await res.json();
     if (data && data.rates && data.rates.INR) {
-      return data.rates.INR;
+      return { price: data.rates.INR, changePercent: null };
     }
   } catch (e) {
     console.error('ExchangeRate-API USD/INR fetch failed:', e.message);
@@ -56,7 +56,7 @@ async function fetchLiveUSDINR() {
     const res = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
     const data = await res.json();
     if (data && data.usd && data.usd.inr) {
-      return data.usd.inr;
+      return { price: data.usd.inr, changePercent: null };
     }
   } catch (e) {
     console.error('Fawazahmed0 Currency-API USD/INR fetch failed:', e.message);
@@ -110,6 +110,7 @@ export async function GET(request) {
           dividendYield: quote.dividendYield, exchange: quote.exchange,
           currency: resolveCurrency(symbol, quote.currency),
           marketState: quote.marketState,
+          marketTime: quote.regularMarketTime ? new Date(quote.regularMarketTime).getTime() : null,
           fetchedAt: new Date().toISOString(),
         };
         setCache(`quote_${symbol}`, data);
@@ -123,11 +124,12 @@ export async function GET(request) {
   // Always fetch the live real-time USD/INR rate from our 4 redundant layers
   // and inject it into the response as standard 'USDINR=X' so the frontend has it 100% of the time!
   try {
-    const liveRate = await fetchLiveUSDINR();
+    const liveData = await fetchLiveUSDINR();
     results['USDINR=X'] = {
       symbol: 'USDINR=X',
       name: 'USD/INR Forex',
-      price: liveRate,
+      price: liveData.price,
+      changePercent: liveData.changePercent,
       currency: 'INR',
       exchange: 'FOREX',
       fetchedAt: new Date().toISOString(),

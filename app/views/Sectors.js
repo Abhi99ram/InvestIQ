@@ -66,7 +66,9 @@ export default function Sectors({ selectedSector, onSelectStock }) {
                 <table className="data-table">
                   <thead><tr><th>Symbol</th><th>Name</th><th>Price</th><th>Change</th></tr></thead>
                   <tbody>
-                    {Object.entries(sectorData).map(([sym, d]) => {
+                    {Object.entries(sectorData)
+                      .filter(([sym]) => sym !== 'USDINR=X')
+                      .map(([sym, d]) => {
                       if (d.error) return null;
                       const isGain = (d.changePercent || 0) >= 0;
                       return (

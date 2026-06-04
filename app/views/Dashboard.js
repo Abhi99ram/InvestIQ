@@ -94,7 +94,7 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
           <div className={`index-change ${isGain ? 'gain' : 'loss'}`} style={{ marginTop: isCommodity ? 4 : 0 }}>
             {d.changePercent != null
               ? <>{isGain ? '▲' : '▼'} {Math.abs(d.changePercent).toFixed(2)}%</>
-              : <span style={{ color: 'var(--text-muted)' }}>No data</span>
+              : (isForex ? <span style={{ color: 'var(--text-muted)' }}>Live Rate</span> : <span style={{ color: 'var(--text-muted)' }}>No data</span>)
             }
           </div>
         )}
