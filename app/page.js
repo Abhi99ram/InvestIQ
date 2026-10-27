@@ -22,7 +22,7 @@ const Admin = dynamic(() => import('./views/Admin'), { ssr: false, loading: () =
 const MyAccount = dynamic(() => import('./views/MyAccount'), { ssr: false, loading: () => <LoadingPlaceholder /> });
 const Support = dynamic(() => import('./views/Support'), { ssr: false, loading: () => <LoadingPlaceholder /> });
 const Simulator = dynamic(() => import('./views/Simulator'), { ssr: false, loading: () => <LoadingPlaceholder /> });
-const Auth = dynamic(() => import('./views/Auth'), { ssr: false, loading: () => <LoadingPlaceholder /> });
+const Landing = dynamic(() => import('./views/Landing'), { ssr: false, loading: () => <LoadingPlaceholder /> });
 
 
 import { LayoutDashboard, Factory, Building2, Star, LineChart, Newspaper, Calculator, UserIcon, Headphones } from 'lucide-react';
@@ -232,6 +232,7 @@ export default function Home() {
             justifyContent: 'center',
             gap: 12,
             boxShadow: '0 8px 24px rgba(14,165,233,0.3)',
+            position: 'fixed', left: 0, right: 0, bottom: 0, // landing nav is fixed to the top
             zIndex: 99999,
             transition: 'all 0.3s ease'
           }}>
@@ -240,16 +241,7 @@ export default function Home() {
             <span style={{ background:'rgba(255,255,255,0.22)', padding:'4px 10px', borderRadius:8, fontSize:'0.72rem', letterSpacing:1, fontWeight:700 }}>RELOAD & UPDATE NOW ⚡</span>
           </div>
         )}
-        <div className="app-layout" style={{ justifyContent: 'center', alignItems: 'center', flex: 1 }}>
-          <div style={{ padding: '20px', width: '100%' }}>
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <img src="/logo.png" alt="InvestIQ Logo" style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 8px 32px rgba(56,189,248,0.3)' }} />
-              <h1 style={{ fontSize: '2.5rem', color: 'var(--text-primary)' }}>InvestIQ AI</h1>
-              <p style={{ color: 'var(--text-muted)' }}>Financial Intelligence Dashboard</p>
-            </div>
-            <Auth onLogin={handleLogin} />
-          </div>
-        </div>
+        <Landing onLogin={handleLogin} />
       </div>
     );
   }
