@@ -129,7 +129,7 @@ function MonteCarlo() {
           style={{ transitionDelay: `${(i % 9) * 0.06}s` }} />
       ))}
       <path d={worst} pathLength={1000} className="lp-mc-path" stroke="#fb7185" style={{ strokeWidth: 1.8, transitionDelay: '0.6s' }} />
-      <path d={median} pathLength={1000} className="lp-mc-path" stroke="#b6f24a" style={{ strokeWidth: 2.6, transitionDelay: '0.5s' }} />
+      <path d={median} pathLength={1000} className="lp-mc-path" stroke="#ffffff" style={{ strokeWidth: 2.6, transitionDelay: '0.5s' }} />
     </svg>
   );
 }
@@ -409,7 +409,7 @@ export default function Landing({ onLogin }) {
                   <svg viewBox="0 0 170 170">
                     <defs>
                       <linearGradient id="lp-gauge-g" x1="0" x2="1" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#22d3ee" /><stop offset="100%" stopColor="#b6f24a" />
+                        <stop offset="0%" stopColor="#22d3ee" /><stop offset="100%" stopColor="#a78bfa" />
                       </linearGradient>
                     </defs>
                     <circle cx="85" cy="85" r="70" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="12" />
@@ -419,7 +419,7 @@ export default function Landing({ onLogin }) {
                   <div className="lp-gauge-val"><b>78</b><small>BULLISH</small></div>
                 </div>
                 <div className="lp-bars">
-                  {[['Fundamental', 82, '#a78bfa'], ['Technical', 71, '#22d3ee'], ['Macro', 64, '#b6f24a']].map(([n, v, c]) => (
+                  {[['Fundamental', 82, '#a78bfa'], ['Technical', 71, '#22d3ee'], ['Macro', 64, '#f472b6']].map(([n, v, c]) => (
                     <div key={n}>
                       <div className="lp-bar-top"><span>{n}</span><b>{v}</b></div>
                       <div className="lp-bar"><i style={{ '--w': `${v}%`, background: c }} /></div>
@@ -504,7 +504,7 @@ export default function Landing({ onLogin }) {
           <div className="lp-pillars">
             {[['4', 'Major exchanges — NSE, BSE, NYSE & NASDAQ'], ['3', 'Analysis layers in every AI verdict'], ['6', 'Dedicated market news streams'], ['24/7', 'Automated price-alert monitoring']].map(([n, t], i) => (
               <div className="lp-pillar" key={t} data-reveal style={{ '--d': `${i * 0.08}s` }}>
-                <b className={i % 2 ? 'lp-grad' : undefined} style={i % 2 ? undefined : { color: '#b6f24a' }}>{n}</b>
+                <b className={i % 2 ? 'lp-grad' : undefined} style={i % 2 ? undefined : { color: '#c4b5fd' }}>{n}</b>
                 <span>{t}</span>
               </div>
             ))}
