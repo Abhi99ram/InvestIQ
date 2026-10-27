@@ -132,7 +132,7 @@ export default function NewsFeedView() {
                 border: '1px solid var(--border-color)', background: 'transparent',
                 color: 'var(--text-muted)', transition: 'all 0.2s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.1)'; e.currentTarget.style.color = '#38bdf8'; e.currentTarget.style.borderColor = '#38bdf8'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,211,238,0.1)'; e.currentTarget.style.color = '#22d3ee'; e.currentTarget.style.borderColor = '#22d3ee'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}>
               {p.label}
             </button>
@@ -154,8 +154,8 @@ export default function NewsFeedView() {
       {/* Policy tab special banner */}
       {mode === 'policy' && (
         <div style={{
-          background: 'linear-gradient(135deg,rgba(139,92,246,0.15),rgba(59,130,246,0.08))',
-          border: '1px solid rgba(139,92,246,0.3)',
+          background: 'linear-gradient(135deg,rgba(124,92,255,0.15),rgba(124,92,255,0.08))',
+          border: '1px solid rgba(124,92,255,0.3)',
           borderRadius: 10, padding: '12px 16px', marginBottom: 16,
           display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'
         }}>
@@ -166,8 +166,8 @@ export default function NewsFeedView() {
               RBI MPC decisions · Repo rate · Interest rates · Inflation targeting · Auto-refreshes every 5 minutes
             </div>
           </div>
-          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 2s infinite' }} />
+          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#b6f24a', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#b6f24a', display: 'inline-block', animation: 'pulse 2s infinite' }} />
             LIVE
           </span>
         </div>
@@ -199,7 +199,7 @@ export default function NewsFeedView() {
         }}>
           <span style={{ fontSize: '1.4rem' }}>⚪</span>
           <div>
-            <div style={{ fontWeight: 600, color: '#94a3b8', fontSize: '0.9rem' }}>Silver Market Intelligence</div>
+            <div style={{ fontWeight: 600, color: '#8a93b2', fontSize: '0.9rem' }}>Silver Market Intelligence</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               MCX Silver · COMEX SI Futures · Industrial demand · Solar sector demand · Import data
             </div>
@@ -210,13 +210,13 @@ export default function NewsFeedView() {
       {/* Forex tab banner */}
       {mode === 'forex' && (
         <div style={{
-          background: 'linear-gradient(135deg,rgba(16,185,129,0.15),rgba(16,185,129,0.04))',
-          border: '1px solid rgba(16,185,129,0.35)', borderRadius: 10, padding: '12px 16px', marginBottom: 16,
+          background: 'linear-gradient(135deg,rgba(182,242,74,0.15),rgba(182,242,74,0.04))',
+          border: '1px solid rgba(182,242,74,0.35)', borderRadius: 10, padding: '12px 16px', marginBottom: 16,
           display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'
         }}>
           <span style={{ fontSize: '1.4rem' }}>💱</span>
           <div>
-            <div style={{ fontWeight: 600, color: '#10b981', fontSize: '0.9rem' }}>USD / INR Exchange Rate</div>
+            <div style={{ fontWeight: 600, color: '#b6f24a', fontSize: '0.9rem' }}>USD / INR Exchange Rate</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               RBI reference rate · Forex reserves · FII/FDI flows · Dollar index (DXY) · Import/Export impact
             </div>
@@ -227,13 +227,13 @@ export default function NewsFeedView() {
       {/* Indices tab banner */}
       {mode === 'indices' && (
         <div style={{
-          background: 'linear-gradient(135deg,rgba(56,189,248,0.15),rgba(56,189,248,0.04))',
-          border: '1px solid rgba(56,189,248,0.35)', borderRadius: 10, padding: '12px 16px', marginBottom: 16,
+          background: 'linear-gradient(135deg,rgba(34,211,238,0.15),rgba(34,211,238,0.04))',
+          border: '1px solid rgba(34,211,238,0.35)', borderRadius: 10, padding: '12px 16px', marginBottom: 16,
           display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'
         }}>
           <span style={{ fontSize: '1.4rem' }}>📈</span>
           <div>
-            <div style={{ fontWeight: 600, color: '#38bdf8', fontSize: '0.9rem' }}>NSE · BSE · Sensex · Nifty Updates</div>
+            <div style={{ fontWeight: 600, color: '#22d3ee', fontSize: '0.9rem' }}>NSE · BSE · Sensex · Nifty Updates</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               Nifty 50 · Sensex · Bank Nifty · FII/DII data · Circuit breakers · F&O expiry · Bulk deals
             </div>

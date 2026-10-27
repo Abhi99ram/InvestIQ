@@ -5,8 +5,8 @@ import dynamic from 'next/dynamic';
 const LoadingPlaceholder = () => (
   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '350px', width: '100%', gap: '15px' }}>
     <div style={{ position: 'relative', width: '40px', height: '40px' }}>
-      <div style={{ position: 'absolute', inset: 0, border: '3px solid rgba(56,189,248,0.1)', borderRadius: '50%' }}></div>
-      <div style={{ position: 'absolute', inset: 0, border: '3px solid transparent', borderTopColor: '#38bdf8', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      <div style={{ position: 'absolute', inset: 0, border: '3px solid rgba(34,211,238,0.1)', borderRadius: '50%' }}></div>
+      <div style={{ position: 'absolute', inset: 0, border: '3px solid transparent', borderTopColor: '#22d3ee', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
     </div>
     <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500 }}>Loading section...</span>
   </div>
@@ -220,7 +220,7 @@ export default function Home() {
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
         {updateAvailable && (
           <div onClick={handleApplyUpdate} style={{
-            background: 'linear-gradient(90deg, #22c55e, #0ea5e9, #a855f7)',
+            background: 'linear-gradient(90deg, #b6f24a, #22d3ee, #a855f7)',
             padding: '14px 20px',
             color: '#fff',
             fontWeight: 700,
@@ -231,7 +231,7 @@ export default function Home() {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 12,
-            boxShadow: '0 8px 24px rgba(14,165,233,0.3)',
+            boxShadow: '0 8px 24px rgba(34,211,238,0.3)',
             position: 'fixed', left: 0, right: 0, bottom: 0, // landing nav is fixed to the top
             zIndex: 99999,
             transition: 'all 0.3s ease'
@@ -285,7 +285,7 @@ export default function Home() {
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <img src="/logo.png" alt="InvestIQ Logo" style={{ width: '38px', height: '38px', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 4px 20px rgba(56,189,248,0.25)' }} />
+          <img src="/logo.png" alt="InvestIQ Logo" style={{ width: '38px', height: '38px', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 4px 20px rgba(34,211,238,0.25)' }} />
           <h1>InvestIQ AI</h1>
         </div>
         <nav className="sidebar-nav">
@@ -299,8 +299,8 @@ export default function Home() {
             ))}
           </div>
         </nav>
-        <div style={{ padding: '24px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '0.78rem', color: '#475569', lineHeight: 1.6 }}>
-          <div style={{ color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>InvestIQ AI v1.0</div>
+        <div style={{ padding: '24px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '0.78rem', color: '#5a6188', lineHeight: 1.6 }}>
+          <div style={{ color: '#8a93b2', fontWeight: 600, marginBottom: 4 }}>InvestIQ AI v1.0</div>
           <div style={{ marginBottom: 12 }}>Data via Yahoo Finance</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#f59e0b', fontWeight: 600 }}>
             <span>⚠️</span>
@@ -314,7 +314,7 @@ export default function Home() {
         {/* Dynamic Auto-Update Notification Banner (Play Store, App Store, and PC Wrapper updates) */}
         {updateAvailable && (
           <div onClick={handleApplyUpdate} style={{
-            background: 'linear-gradient(90deg, #22c55e, #0ea5e9, #a855f7)',
+            background: 'linear-gradient(90deg, #b6f24a, #22d3ee, #a855f7)',
             padding: '12px 20px',
             color: '#fff',
             fontWeight: 700,
@@ -325,7 +325,7 @@ export default function Home() {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 12,
-            boxShadow: '0 8px 24px rgba(14,165,233,0.3)',
+            boxShadow: '0 8px 24px rgba(34,211,238,0.3)',
             zIndex: 9999,
             transition: 'all 0.3s ease'
           }}>

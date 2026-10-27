@@ -355,7 +355,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                       <td>{d.price != null ? formatPrice(d.price, resolveCurrency(sym, d.currency), { symbol: sym }) : '-'}</td>
                       <td className={isGain ? 'gain' : 'loss'}>{d.changePercent != null ? `${isGain ? '▲' : '▼'} ${d.changePercent.toFixed(2)}%` : '-'}</td>
                       <td style={{ color: 'var(--text-muted)' }}>{d.volume?.toLocaleString() || '-'}</td>
-                      <td><button className="btn btn-sm" style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => removeStock(sym)}>✕</button></td>
+                      <td><button className="btn btn-sm" style={{ background: 'rgba(251,113,133,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => removeStock(sym)}>✕</button></td>
                     </tr>
                   );
                 })}
@@ -379,7 +379,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                   </span>
                   <span className={`tag ${a.active ? 'tag-gain' : 'tag-neutral'}`}>{a.active ? 'Active' : 'Triggered'}</span>
                 </div>
-                <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => deleteAlert(a.id)}>Delete</button>
+                <button className="btn btn-sm" style={{ background: 'rgba(251,113,133,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => deleteAlert(a.id)}>Delete</button>
               </div>
             ))
           )}
@@ -400,7 +400,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                   </span>
                   <span className="tag tag-gain">Active</span>
                 </div>
-                <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => deleteSectorAlert(a.id)}>Delete</button>
+                <button className="btn btn-sm" style={{ background: 'rgba(251,113,133,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => deleteSectorAlert(a.id)}>Delete</button>
               </div>
             ))
           )}
@@ -419,7 +419,7 @@ export default function Watchlist({ onSelectStock, setNotifCount, user }) {
                   <span style={{ margin: '0 8px', color: 'var(--text-muted)' }}>Tracking News</span>
                   <span className="tag tag-gain">Active</span>
                 </div>
-                <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => deleteNewsAlert(a.id)}>Delete</button>
+                <button className="btn btn-sm" style={{ background: 'rgba(251,113,133,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => deleteNewsAlert(a.id)}>Delete</button>
               </div>
             ))
           )}

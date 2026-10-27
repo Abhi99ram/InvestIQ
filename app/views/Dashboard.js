@@ -52,13 +52,13 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
     const cardBg = isCommodity
       ? 'linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.04))'
       : isForex
-      ? 'linear-gradient(135deg,rgba(16,185,129,0.12),rgba(16,185,129,0.04))'
+      ? 'linear-gradient(135deg,rgba(182,242,74,0.12),rgba(182,242,74,0.04))'
       : 'var(--bg-glass)';
 
     const borderColor = isCommodity
       ? 'rgba(245,158,11,0.3)'
       : isForex
-      ? 'rgba(16,185,129,0.3)'
+      ? 'rgba(182,242,74,0.3)'
       : 'var(--border-color)';
 
     const usdinrRate = indices['USDINR=X']?.price || 83.50;
@@ -82,7 +82,7 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
             <div>
               <div className="index-value">{formatNum(d.price, idx.unit, d.currency || resolveCurrency(idx.symbol))}</div>
               {isCommodity && d.price != null && (
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#10b981', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#b6f24a', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>≈</span>
                   <span>{formatPrice(d.price * usdinrRate, 'INR')}</span>
                 </div>
@@ -142,8 +142,8 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
       {/* Live Notification Permission Banner */}
       {notifPermission !== 'granted' && (
         <div style={{
-          background: 'linear-gradient(135deg, rgba(14,165,233,0.12) 0%, rgba(34,197,94,0.04) 100%)',
-          border: '1px solid rgba(14, 165, 233, 0.2)',
+          background: 'linear-gradient(135deg, rgba(34,211,238,0.12) 0%, rgba(182,242,74,0.04) 100%)',
+          border: '1px solid rgba(34,211,238,0.2)',
           borderRadius: 16,
           padding: '16px 20px',
           display: 'flex',
@@ -152,13 +152,13 @@ export default function Dashboard({ onSelectStock, onSelectSector }) {
           marginBottom: 20,
           gap: 16,
           flexWrap: 'wrap',
-          boxShadow: '0 4px 20px rgba(14,165,233,0.05)',
+          boxShadow: '0 4px 20px rgba(34,211,238,0.05)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 24 }}>🔔</span>
             <div>
               <h4 style={{ margin: 0, color: '#fff', fontSize: '0.95rem', fontWeight: 600 }}>Enable Live Price & News Alerts</h4>
-              <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.8rem', marginTop: 2 }}>Get real-time push notifications for watchlist movements and sector trends on your device.</p>
+              <p style={{ margin: 0, color: '#8a93b2', fontSize: '0.8rem', marginTop: 2 }}>Get real-time push notifications for watchlist movements and sector trends on your device.</p>
             </div>
           </div>
           <button onClick={requestNotifPermission} className="btn btn-primary btn-sm" style={{ whiteSpace: 'nowrap', borderRadius: 8 }}>

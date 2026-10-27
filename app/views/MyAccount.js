@@ -146,7 +146,7 @@ export default function MyAccount({ user, onUpdateUser, onLogout }) {
               className="btn" 
               disabled={loading}
               onClick={handleDeleteAccount}
-              style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--accent-red)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              style={{ background: 'rgba(251,113,133,0.15)', color: 'var(--accent-red)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
             >
               Delete Account
             </button>

@@ -148,7 +148,7 @@ export default function Admin() {
                       <button className="btn btn-sm btn-secondary" onClick={() => handleEditClick(u)}>
                         Edit
                       </button>
-                      <button className="btn btn-sm" style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => handleDelete(u)}>
+                      <button className="btn btn-sm" style={{ background: 'rgba(251,113,133,0.15)', color: 'var(--accent-red)', border: 'none' }} onClick={() => handleDelete(u)}>
                         Delete
                       </button>
                     </div>

@@ -18,7 +18,7 @@ function renderMarkdown(text) {
     // H2 headers
     if (line.startsWith('## ')) {
       elements.push(
-        <h3 key={i} style={{ color: '#38bdf8', fontWeight: 700, fontSize: '1rem', margin: '14px 0 6px', borderBottom: '1px solid rgba(56,189,248,0.2)', paddingBottom: 4 }}>
+        <h3 key={i} style={{ color: '#22d3ee', fontWeight: 700, fontSize: '1rem', margin: '14px 0 6px', borderBottom: '1px solid rgba(34,211,238,0.2)', paddingBottom: 4 }}>
           {renderInline(line.slice(3))}
         </h3>
       );
@@ -36,7 +36,7 @@ function renderMarkdown(text) {
       const bulletContent = line.slice(2);
       elements.push(
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4, paddingLeft: 4 }}>
-          <span style={{ color: '#38bdf8', flexShrink: 0, marginTop: 2 }}>•</span>
+          <span style={{ color: '#22d3ee', flexShrink: 0, marginTop: 2 }}>•</span>
           <span style={{ lineHeight: 1.6 }}>{renderInline(bulletContent)}</span>
         </div>
       );
@@ -47,7 +47,7 @@ function renderMarkdown(text) {
       if (match) {
         elements.push(
           <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4, paddingLeft: 4 }}>
-            <span style={{ color: '#38bdf8', flexShrink: 0, fontWeight: 700, minWidth: 18 }}>{match[1]}.</span>
+            <span style={{ color: '#22d3ee', flexShrink: 0, fontWeight: 700, minWidth: 18 }}>{match[1]}.</span>
             <span style={{ lineHeight: 1.6 }}>{renderInline(match[2])}</span>
           </div>
         );
@@ -64,7 +64,7 @@ function renderMarkdown(text) {
     // Regular paragraph
     else {
       elements.push(
-        <p key={i} style={{ margin: '0 0 6px', lineHeight: 1.65, color: '#e2e8f0' }}>
+        <p key={i} style={{ margin: '0 0 6px', lineHeight: 1.65, color: '#e6e9f7' }}>
           {renderInline(line)}
         </p>
       );
@@ -79,10 +79,10 @@ function renderInline(text) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} style={{ color: '#f1f5f9', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+      return <strong key={i} style={{ color: '#f4f6ff', fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
     }
     if (part.startsWith('`') && part.endsWith('`')) {
-      return <code key={i} style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', padding: '1px 5px', borderRadius: 4, fontSize: '0.85em', fontFamily: 'monospace' }}>{part.slice(1, -1)}</code>;
+      return <code key={i} style={{ background: 'rgba(34,211,238,0.15)', color: '#22d3ee', padding: '1px 5px', borderRadius: 4, fontSize: '0.85em', fontFamily: 'monospace' }}>{part.slice(1, -1)}</code>;
     }
     return part;
   });
@@ -101,15 +101,15 @@ const CHAT_SUGGESTIONS = [
 
 // ── AnalysisCard: compact card with key metrics + 1-2 line insight ────────────
 function AnalysisCard({ icon, title, isBullish, badgeLabel, trigger, metrics }) {
-  const borderColor = isBullish ? '#10b981' : badgeLabel?.includes('Cautious') || badgeLabel?.includes('Oversold') ? '#f59e0b' : '#ef4444';
+  const borderColor = isBullish ? '#b6f24a' : badgeLabel?.includes('Cautious') || badgeLabel?.includes('Oversold') ? '#f59e0b' : '#fb7185';
   const badge = badgeLabel || (isBullish ? '▲ Bullish' : '▼ Bearish');
-  const badgeColor = isBullish ? '#10b981' : badge.includes('Cautious') || badge.includes('Oversold') ? '#f59e0b' : '#ef4444';
+  const badgeColor = isBullish ? '#b6f24a' : badge.includes('Cautious') || badge.includes('Oversold') ? '#f59e0b' : '#fb7185';
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderLeft: `6px solid ${borderColor}`, borderRadius: 16, padding: '24px 30px' }}>
       {/* Title + badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <span style={{ fontSize: '1.4rem' }}>{icon}</span>
-        <span style={{ fontWeight: 800, fontSize: '1.3rem', color: '#f1f5f9' }}>{title}</span>
+        <span style={{ fontWeight: 800, fontSize: '1.3rem', color: '#f4f6ff' }}>{title}</span>
         <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: '0.85rem', fontWeight: 700, background: `${badgeColor}22`, color: badgeColor, border: `1px solid ${badgeColor}44` }}>
           {badge}
         </span>
@@ -124,7 +124,7 @@ function AnalysisCard({ icon, title, isBullish, badgeLabel, trigger, metrics }) 
         ))}
       </div>
       {/* 1-2 line insight */}
-      <div style={{ fontSize: '1rem', color: '#94a3b8', lineHeight: 1.6, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
+      <div style={{ fontSize: '1rem', color: '#8a93b2', lineHeight: 1.6, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
         {trigger}
       </div>
     </div>
@@ -523,15 +523,15 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
           </div>
 
           {/* Premium Sentinel AI Chatbot */}
-          <div className="card" style={{ marginTop: 20, border: '1px solid rgba(56,189,248,0.35)', background: 'linear-gradient(180deg,rgba(13,19,33,0.9),rgba(10,15,26,0.98))' }}>
+          <div className="card" style={{ marginTop: 20, border: '1px solid rgba(34,211,238,0.35)', background: 'linear-gradient(180deg,rgba(13,19,33,0.9),rgba(10,15,26,0.98))' }}>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(56,189,248,0.15)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(34,211,238,0.15)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#38bdf8,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>🤖</div>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#22d3ee,#7c5cff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>🤖</div>
                 <div>
                   <div style={{ fontWeight: 700, color: '#fff', fontSize: '1rem' }}>Sentinel AI Agent</div>
-                  <div style={{ fontSize: '0.72rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block', animation: 'pulse 2s infinite' }} />
+                  <div style={{ fontSize: '0.72rem', color: '#b6f24a', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#b6f24a', display: 'inline-block', animation: 'pulse 2s infinite' }} />
                     Live • Groq LLaMA 70B • Real market data
                   </div>
                 </div>
@@ -545,18 +545,18 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                     {msg.role === 'agent'
-                      ? <><span style={{ width: 16, height: 16, borderRadius: '50%', background: 'linear-gradient(135deg,#38bdf8,#6366f1)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem' }}>🤖</span> Sentinel AI</>  
-                      : <>You <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#38bdf8', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}>👤</span></>}
+                      ? <><span style={{ width: 16, height: 16, borderRadius: '50%', background: 'linear-gradient(135deg,#22d3ee,#7c5cff)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem' }}>🤖</span> Sentinel AI</>  
+                      : <>You <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#22d3ee', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}>👤</span></>}
                   </div>
                   <div style={{
                     maxWidth: '88%',
                     padding: msg.role === 'user' ? '10px 14px' : '14px 18px',
                     borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
                     background: msg.role === 'user'
-                      ? 'linear-gradient(135deg,#38bdf8,#6366f1)'
+                      ? 'linear-gradient(135deg,#22d3ee,#7c5cff)'
                       : 'rgba(255,255,255,0.04)',
                     border: msg.role === 'agent' ? '1px solid rgba(255,255,255,0.08)' : 'none',
-                    color: '#e2e8f0',
+                    color: '#e6e9f7',
                     fontSize: '0.875rem',
                     lineHeight: 1.6,
                   }}>
@@ -568,7 +568,7 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ display: 'flex', gap: 4 }}>
                     {[0,1,2].map(j => (
-                      <div key={j} style={{ width: 8, height: 8, borderRadius: '50%', background: '#38bdf8', animation: `pulse 1.4s ease-in-out ${j * 0.2}s infinite` }} />
+                      <div key={j} style={{ width: 8, height: 8, borderRadius: '50%', background: '#22d3ee', animation: `pulse 1.4s ease-in-out ${j * 0.2}s infinite` }} />
                     ))}
                   </div>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Sentinel is thinking...</span>
@@ -582,9 +582,9 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
               <div style={{ padding: '0 20px 12px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {CHAT_SUGGESTIONS.map(s => (
                   <button key={s} onClick={() => sendChat(s)}
-                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: '0.75rem', cursor: 'pointer', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.06)', color: '#94a3b8', transition: 'all 0.2s' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.15)'; e.currentTarget.style.color = '#38bdf8'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.06)'; e.currentTarget.style.color = '#94a3b8'; }}>
+                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: '0.75rem', cursor: 'pointer', border: '1px solid rgba(34,211,238,0.3)', background: 'rgba(34,211,238,0.06)', color: '#8a93b2', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(34,211,238,0.15)'; e.currentTarget.style.color = '#22d3ee'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(34,211,238,0.06)'; e.currentTarget.style.color = '#8a93b2'; }}>
                     {s}
                   </button>
                 ))}
@@ -597,7 +597,7 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
                 <input
                   type="text"
                   className="form-input"
-                  style={{ flex: 1, marginBottom: 0, borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(56,189,248,0.2)' }}
+                  style={{ flex: 1, marginBottom: 0, borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(34,211,238,0.2)' }}
                   placeholder="Ask anything: Gold outlook, USD/INR, analyze RELIANCE.NS, RBI policy..."
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}

@@ -146,7 +146,7 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
       const lc = await import('lightweight-charts');
       const chart = lc.createChart(chartRef.current, {
         width: chartRef.current.clientWidth, height: 420,
-        layout: { background: { color: 'transparent' }, textColor: '#94a3b8' },
+        layout: { background: { color: 'transparent' }, textColor: '#8a93b2' },
         grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
         crosshair: { mode: 0 },
         rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
@@ -172,9 +172,9 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
       const isChartGain = chartData.length > 1 ? chartData[chartData.length - 1].value >= chartData[0].value : true;
 
       const series = chart.addSeries(lc.AreaSeries, {
-        lineColor: isChartGain ? '#34d399' : '#f87171',
-        topColor: isChartGain ? 'rgba(52, 211, 153, 0.4)' : 'rgba(248, 113, 113, 0.4)',
-        bottomColor: isChartGain ? 'rgba(52, 211, 153, 0.0)' : 'rgba(248, 113, 113, 0.0)',
+        lineColor: isChartGain ? '#b6f24a' : '#fb7185',
+        topColor: isChartGain ? 'rgba(182,242,74,0.4)' : 'rgba(251,113,133,0.4)',
+        bottomColor: isChartGain ? 'rgba(182,242,74,0.0)' : 'rgba(251,113,133,0.0)',
         lineWidth: 2,
       });
 
@@ -277,7 +277,7 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
                 </div>
                 {lastUpdate && (
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                    Last update: {lastUpdate.toLocaleTimeString()} {isLive && <span style={{ color: '#f87171' }}>● LIVE</span>}
+                    Last update: {lastUpdate.toLocaleTimeString()} {isLive && <span style={{ color: '#fb7185' }}>● LIVE</span>}
                   </div>
                 )}
               </div>

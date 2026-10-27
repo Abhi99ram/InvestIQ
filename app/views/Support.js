@@ -12,7 +12,7 @@ export default function Support() {
         </p>
         
         <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
-          <div style={{ background: 'rgba(56, 189, 248, 0.1)', padding: '20px', borderRadius: '12px', flex: 1, minWidth: '250px' }}>
+          <div style={{ background: 'rgba(34,211,238,0.1)', padding: '20px', borderRadius: '12px', flex: 1, minWidth: '250px' }}>
             <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--text-muted)' }}>Email us directly at:</p>
             <a 
               href="mailto:investiq.helpdesk@gmail.com" 
@@ -22,12 +22,12 @@ export default function Support() {
             </a>
           </div>
 
-          <div style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '20px', borderRadius: '12px', flex: 1, minWidth: '250px' }}>
+          <div style={{ background: 'rgba(182,242,74,0.1)', padding: '20px', borderRadius: '12px', flex: 1, minWidth: '250px' }}>
             <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--text-muted)' }}>Talk to an Expert on WhatsApp:</p>
             <a 
               href="https://api.whatsapp.com/send?phone=919059204355&text=Hi,+I+need+help+with+InvestIQ+AI" 
               target="_blank" rel="noreferrer"
-              style={{ fontSize: '20px', fontWeight: 'bold', color: '#22c55e', textDecoration: 'none' }}
+              style={{ fontSize: '20px', fontWeight: 'bold', color: '#b6f24a', textDecoration: 'none' }}
             >
               Start Chat 💬
             </a>
