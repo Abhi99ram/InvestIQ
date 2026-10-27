@@ -59,8 +59,12 @@ export default function PriceChart({ symbol, period, chartType = 'candles', quot
       });
       if (dataRef.current) draw();
     })();
+    // autoSize keeps bar spacing when the panel widens, which leaves empty space on the right; refit instead
+    const ro = new ResizeObserver(() => chartRef.current?.timeScale().fitContent());
+    if (containerRef.current) ro.observe(containerRef.current);
     return () => {
       disposed = true;
+      ro.disconnect();
       if (chartRef.current) chartRef.current.remove();
       chartRef.current = null;
       priceSeriesRef.current = null;
