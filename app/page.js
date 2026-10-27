@@ -352,7 +352,7 @@ export default function Home() {
                 {searchResults.map((r, i) => (
                   <div key={i} className="search-result-item" onMouseDown={() => selectStock(r.symbol)}>
                     <div><strong>{r.symbol}</strong><br/><span style={{fontSize:'0.8rem',color:'var(--text-muted)'}}>{r.name}</span></div>
-                    <span className="tag tag-neutral">{r.exchange}</span>
+                    <span className="tag tag-neutral">{r.type === 'FUTURE' ? 'Futures · ' : ''}{r.exchange}</span>
                   </div>
                 ))}
               </div>

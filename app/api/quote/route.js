@@ -111,6 +111,12 @@ export async function GET(request) {
           currency: resolveCurrency(symbol, quote.currency),
           marketState: quote.marketState,
           marketTime: quote.regularMarketTime ? new Date(quote.regularMarketTime).getTime() : null,
+          quoteSource: quote.quoteSourceName || null,
+          // Yahoo's "Real Time" sources (e.g. Nasdaq) are live; others lag by exchangeDataDelayedBy minutes
+          delayMinutes: /real\s*time/i.test(quote.quoteSourceName || '') ? 0 : (quote.exchangeDataDelayedBy ?? null),
+          exchangeTimezone: quote.exchangeTimezoneName || null,
+          timezoneAbbr: quote.exchangeTimezoneShortName || null,
+          gmtOffsetMs: quote.gmtOffSetMilliseconds ?? null,
           fetchedAt: new Date().toISOString(),
         };
         setCache(`quote_${symbol}`, data);
@@ -124,7 +130,11 @@ export async function GET(request) {
   // Always fetch the live real-time USD/INR rate from our 4 redundant layers
   // and inject it into the response as standard 'USDINR=X' so the frontend has it 100% of the time!
   try {
-    const liveData = await fetchLiveUSDINR();
+    let liveData = getCached('usdinr_live', 15000);
+    if (!liveData) {
+      liveData = await fetchLiveUSDINR();
+      setCache('usdinr_live', liveData);
+    }
     results['USDINR=X'] = {
       symbol: 'USDINR=X',
       name: 'USD/INR Forex',

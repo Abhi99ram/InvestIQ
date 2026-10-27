@@ -1,7 +1,8 @@
 'use client';
 import { formatPriceFromQuote, formatChange } from '../../lib/market';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import NewsFeed from '../components/NewsFeed';
+import PriceChart from '../components/PriceChart';
 
 // Market metric symbols — get human-readable labels for news title
 const METRIC_LABELS = {
@@ -26,56 +27,71 @@ const METRIC_LABELS = {
 export default function Companies({ selectedSymbol, onSelectStock }) {
   const [symbol, setSymbol] = useState(selectedSymbol || '');
   const [quote, setQuote] = useState(null);
-  const [history, setHistory] = useState([]);
   const [period, setPeriod] = useState('1d');
+  const [chartType, setChartType] = useState('candles');
   const [companyNews, setCompanyNews] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [isLive, setIsLive] = useState(true);
-  const chartRef = useRef(null);
-  const chartInstance = useRef(null);
-  const seriesRef = useRef(null);
-  const liveInterval = useRef(null);
+  const [feedError, setFeedError] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0); // bump to reload chart + quote now
+  const symbolRef = useRef(symbol);
 
   useEffect(() => {
     if (selectedSymbol) {
       setSymbol(selectedSymbol);
+      symbolRef.current = selectedSymbol;
+      setQuote(null);
       setPeriod('1d'); // default to intraday for real-time
-      loadCompany(selectedSymbol, '1d');
+      fetchCompanyNews(selectedSymbol);
     }
   }, [selectedSymbol]);
 
-  // Cleanup live interval on unmount
+  // Live quote loop: every second while the exchange is trading, every 15s otherwise (so a market
+  // open is picked up), paused while the tab is hidden. One request in flight at a time.
   useEffect(() => {
-    return () => { if (liveInterval.current) clearInterval(liveInterval.current); };
-  }, []);
+    if (!symbol) return;
+    let cancelled = false;
+    let timer = null;
+    let inFlight = null;
 
-  async function loadCompany(sym, p) {
-    setLoading(true);
-    await Promise.all([fetchQuote(sym), fetchHistory(sym, p || period), fetchCompanyNews(sym)]);
-    setLoading(false);
-    // Start live updates
-    startLiveUpdates(sym);
-  }
+    const tick = async () => {
+      if (cancelled) return;
+      let next = 15000;
+      if (!document.hidden) {
+        inFlight = new AbortController();
+        try {
+          const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbol)}&_t=${Date.now()}`, { signal: inFlight.signal });
+          const data = await res.json();
+          const q = data[symbol];
+          if (cancelled || symbolRef.current !== symbol) return;
+          if (q && !q.error && q.price != null) {
+            setQuote(q);
+            setLastUpdate(new Date());
+            setFeedError(false);
+            if (q.marketState === 'REGULAR') next = 1000;
+          } else {
+            setFeedError(true);
+            next = 5000;
+          }
+        } catch (e) {
+          if (e.name === 'AbortError' || cancelled) return;
+          setFeedError(true);
+          next = 5000;
+        }
+      }
+      if (!cancelled && isLive) timer = setTimeout(tick, next);
+    };
 
-  async function fetchQuote(sym) {
-    try {
-      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(sym)}&_t=${Date.now()}`);
-      const data = await res.json();
-      const q = data[sym] || null;
-      setQuote(q);
-      setLastUpdate(new Date());
-      return q;
-    } catch (e) { console.error(e); return null; }
-  }
-
-  async function fetchHistory(sym, p) {
-    try {
-      const res = await fetch(`/api/historical?symbol=${encodeURIComponent(sym)}&period=${p}&_t=${Date.now()}`);
-      const data = await res.json();
-      setHistory(data.quotes || []);
-    } catch (e) { console.error(e); }
-  }
+    const onVisible = () => { if (!document.hidden && isLive) { clearTimeout(timer); tick(); } };
+    document.addEventListener('visibilitychange', onVisible);
+    tick();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      inFlight?.abort();
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [symbol, isLive, refreshTick]);
 
   async function fetchCompanyNews(sym) {
     try {
@@ -86,138 +102,22 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
     } catch (e) { console.error(e); }
   }
 
-  // Start real-time price updates every 1 second
-  function startLiveUpdates(sym) {
-    if (liveInterval.current) clearInterval(liveInterval.current);
-    if (!isLive) return;
-
-    liveInterval.current = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/quote?symbols=${encodeURIComponent(sym)}&_t=${Date.now()}`);
-        const data = await res.json();
-        const q = data[sym];
-        if (!q || !q.price) return;
-
-        // Auto-pause aggressive polling if the market is closed (saves API calls)
-        if (q.marketState && q.marketState !== 'REGULAR') {
-          setIsLive(false);
-          if (liveInterval.current) clearInterval(liveInterval.current);
-        }
-
-        setQuote(q);
-        setLastUpdate(new Date());
-
-        // Update the last candle on the chart with current price
-        if (seriesRef.current && q.price) {
-          const tzOffset = new Date().getTimezoneOffset() * 60;
-          const targetTimestampMs = q.marketTime ? q.marketTime : Date.now();
-          const targetTimeS = Math.floor(targetTimestampMs / 1000) - tzOffset;
-          // Round to nearest minute for intraday, or day for daily
-          const timeUnit = period === '1d' ? 60 : period === '1w' ? 900 : 86400;
-          const roundedTime = Math.floor(targetTimeS / timeUnit) * timeUnit;
-
-          seriesRef.current.update({
-            time: roundedTime,
-            value: q.price,
-          });
-        }
-      } catch (e) { /* silent */ }
-    }, 1000); // Every 1 second
-  }
-
-  // Toggle live updates
-  function toggleLive() {
-    if (isLive) {
-      if (liveInterval.current) clearInterval(liveInterval.current);
-      setIsLive(false);
-    } else {
-      setIsLive(true);
-      if (symbol) startLiveUpdates(symbol);
-    }
-  }
-
-  useEffect(() => {
-    if (history.length > 0 && chartRef.current) renderChart();
-  }, [history]);
-
-  async function renderChart() {
-    if (chartInstance.current) { chartInstance.current.remove(); chartInstance.current = null; seriesRef.current = null; }
-    try {
-      const lc = await import('lightweight-charts');
-      const chart = lc.createChart(chartRef.current, {
-        width: chartRef.current.clientWidth, height: 420,
-        layout: { background: { color: 'transparent' }, textColor: '#8a93b2' },
-        grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
-        crosshair: { mode: 0 },
-        rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
-        timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: true, secondsVisible: period === '1d' },
-      });
-      const tzOffset = new Date().getTimezoneOffset() * 60;
-      const rawChartData = history.map(q => ({
-        time: Math.floor(new Date(q.date).getTime() / 1000) - tzOffset,
-        value: q.close,
-      })).filter(d => d.value != null);
-
-      // Prevent LightweightCharts Error: "Data must be ordered by time" and remove duplicates
-      rawChartData.sort((a, b) => a.time - b.time);
-      const chartData = [];
-      const seen = new Set();
-      for (const d of rawChartData) {
-        if (!seen.has(d.time)) {
-          seen.add(d.time);
-          chartData.push(d);
-        }
-      }
-
-      const isChartGain = chartData.length > 1 ? chartData[chartData.length - 1].value >= chartData[0].value : true;
-
-      const series = chart.addSeries(lc.AreaSeries, {
-        lineColor: isChartGain ? '#b6f24a' : '#fb7185',
-        topColor: isChartGain ? 'rgba(182,242,74,0.4)' : 'rgba(251,113,133,0.4)',
-        bottomColor: isChartGain ? 'rgba(182,242,74,0.0)' : 'rgba(251,113,133,0.0)',
-        lineWidth: 2,
-      });
-
-      series.setData(chartData);
-      chart.timeScale().fitContent();
-      chartInstance.current = chart;
-      seriesRef.current = series;
-
-      // Handle resize
-      const resizeObserver = new ResizeObserver(entries => {
-        if (chartRef.current && chartInstance.current) {
-          chartInstance.current.applyOptions({ width: chartRef.current.clientWidth });
-        }
-      });
-      resizeObserver.observe(chartRef.current);
-    } catch (e) { console.error('Chart error:', e); }
-  }
-
-  const changePeriod = (p) => {
-    setPeriod(p);
-    if (symbol) {
-      fetchHistory(symbol, p);
-      // Restart live updates for new period
-      if (isLive) startLiveUpdates(symbol);
-    }
-  };
-
-  // Refresh all data now
-  async function refreshNow() {
-    if (!symbol) return;
-    await Promise.all([fetchQuote(symbol), fetchHistory(symbol, period)]);
-    if (isLive) startLiveUpdates(symbol);
-  }
-
   const isGain = (quote?.changePercent || 0) >= 0;
+  const marketOpen = quote?.marketState === 'REGULAR';
+  const tz = quote?.timezoneAbbr || '';
+  // Exchange-local time of the last trade, e.g. "15:29:58 IST"
+  const tradeTime = quote?.marketTime && quote?.gmtOffsetMs != null
+    ? new Date(quote.marketTime + quote.gmtOffsetMs).toISOString().slice(11, 19) + (tz ? ` ${tz}` : '')
+    : null;
+  const marketStateLabel = { PRE: 'Pre-market', PREPRE: 'Closed', POST: 'After hours', POSTPOST: 'Closed', CLOSED: 'Closed' }[quote?.marketState] || quote?.marketState;
   const periods = [
-    { key: '1d', label: '1D', desc: 'Intraday' },
-    { key: '1w', label: '1W', desc: '1 Week' },
-    { key: '1m', label: '1M', desc: '1 Month' },
-    { key: '3m', label: '3M', desc: '3 Months' },
-    { key: '6m', label: '6M', desc: '6 Months' },
-    { key: '1y', label: '1Y', desc: '1 Year' },
-    { key: '5y', label: '5Y', desc: '5 Years' },
+    { key: '1d', label: '1D', desc: 'Latest session, 1-minute candles' },
+    { key: '1w', label: '1W', desc: '5 sessions, 5-minute candles' },
+    { key: '1m', label: '1M', desc: '1 month, 30-minute candles' },
+    { key: '3m', label: '3M', desc: '3 months, daily candles' },
+    { key: '6m', label: '6M', desc: '6 months, daily candles' },
+    { key: '1y', label: '1Y', desc: '1 year, daily candles' },
+    { key: '5y', label: '5Y', desc: '5 years, weekly candles' },
   ];
 
   return (
@@ -226,17 +126,17 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
         <h1 className="section-title">🏢 Company Explorer</h1>
         {symbol && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {quote && quote.marketState && quote.marketState !== 'REGULAR' ? (
+            {quote && !marketOpen ? (
               <button className="btn btn-secondary" disabled style={{ fontSize: '0.8rem', opacity: 0.8 }}>
-                ⏸ Market {quote.marketState}
+                ⏸ Market {marketStateLabel}
               </button>
             ) : (
               <button className={`btn ${isLive ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={toggleLive} style={{ fontSize: '0.8rem' }}>
+                onClick={() => setIsLive(v => !v)} style={{ fontSize: '0.8rem' }}>
                 {isLive ? '🔴 LIVE' : '⏸ Paused'}
               </button>
             )}
-            <button className="btn btn-secondary" onClick={refreshNow} style={{ fontSize: '0.8rem' }}>
+            <button className="btn btn-secondary" onClick={() => setRefreshTick(t => t + 1)} style={{ fontSize: '0.8rem' }}>
               🔄 Refresh
             </button>
           </div>
@@ -250,6 +150,12 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
         </div>
       )}
 
+      {symbol && !quote && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}>
+          {feedError ? <p style={{ color: 'var(--text-muted)' }}>Couldn’t load a quote for {symbol}. Retrying…</p> : <div className="spinner"></div>}
+        </div>
+      )}
+
       {symbol && quote && (
         <div className="fade-in">
           {/* Company Header */}
@@ -257,53 +163,62 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
               <div>
                 <h2 style={{ fontSize: '1.5rem' }}>{quote.name}</h2>
-                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   <span className="tag tag-neutral">{quote.symbol}</span>
                   <span className="tag tag-neutral">{quote.exchange}</span>
                   <span className="tag tag-neutral">{quote.currency}</span>
                   {quote.marketState && (
-                    <span className={`tag ${quote.marketState === 'REGULAR' ? 'tag-gain' : 'tag-neutral'}`}>
-                      {quote.marketState === 'REGULAR' ? '🟢 Market Open' : '🔴 ' + quote.marketState}
+                    <span className={`tag ${marketOpen ? 'tag-gain' : 'tag-neutral'}`}>
+                      {marketOpen ? '🟢 Market Open' : '🔴 ' + marketStateLabel}
+                    </span>
+                  )}
+                  {quote.delayMinutes != null && (
+                    <span className="tag" title={quote.quoteSource || ''} style={quote.delayMinutes === 0
+                      ? { background: 'rgba(34,211,238,0.12)', color: 'var(--accent-cyan)' }
+                      : { background: 'rgba(251,191,36,0.12)', color: 'var(--accent-amber)' }}>
+                      {quote.delayMinutes === 0 ? '⚡ Real-time' : `⏱ Delayed ${quote.delayMinutes} min`}
                     </span>
                   )}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '2.2rem', fontWeight: 800, transition: 'color 0.3s' }}>
+                <div style={{ fontSize: '2.2rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
                   {formatPriceFromQuote(quote)}
                 </div>
                 <div className={`index-change ${isGain ? 'gain' : 'loss'}`} style={{ fontSize: '1.1rem' }}>
                   {isGain ? '▲' : '▼'} {formatChange(quote.change, quote.changePercent, quote.currency)}
                 </div>
-                {lastUpdate && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                    Last update: {lastUpdate.toLocaleTimeString()} {isLive && <span style={{ color: '#fb7185' }}>● LIVE</span>}
-                  </div>
-                )}
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  {tradeTime && <>Last trade {tradeTime} · </>}
+                  {feedError
+                    ? <span style={{ color: 'var(--accent-amber)' }}>Reconnecting…</span>
+                    : lastUpdate && <>checked {lastUpdate.toLocaleTimeString()} {isLive && marketOpen && <span style={{ color: '#fb7185' }}>● LIVE</span>}</>}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Chart */}
           <div className="card" style={{ marginBottom: 20 }}>
-            <div className="card-header">
+            <div className="card-header" style={{ flexWrap: 'wrap', gap: 10 }}>
               <h3 className="card-title">Price Chart</h3>
-              <div className="chart-controls" style={{ display: 'flex', gap: 4 }}>
-                {periods.map(p => (
-                  <button key={p.key} className={`tab ${period === p.key ? 'active' : ''}`}
-                    onClick={() => changePeriod(p.key)} title={p.desc}>
-                    {p.label}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div className="chart-controls" style={{ display: 'flex', gap: 4, marginBottom: 0 }}>
+                  {[['candles', 'Candles'], ['line', 'Line']].map(([k, l]) => (
+                    <button key={k} className={`tab ${chartType === k ? 'active' : ''}`} onClick={() => setChartType(k)}>{l}</button>
+                  ))}
+                </div>
+                <div className="chart-controls" style={{ display: 'flex', gap: 4, marginBottom: 0 }}>
+                  {periods.map(p => (
+                    <button key={p.key} className={`tab ${period === p.key ? 'active' : ''}`}
+                      onClick={() => setPeriod(p.key)} title={p.desc}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div ref={chartRef} style={{ width: '100%', height: 420 }}>
-              {loading && <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}><div className="spinner"></div></div>}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              <span>Updates every 1 second when LIVE • {period === '1d' ? '5-min candles' : period === '1w' ? '15-min candles' : 'Daily candles'}</span>
-              <span>{lastUpdate && `Last: ${lastUpdate.toLocaleTimeString()}`}</span>
-            </div>
+            <PriceChart key={`${symbol}-${refreshTick}`} symbol={symbol} period={period} chartType={chartType} quote={quote} />
           </div>
 
           <div className="grid-2">
@@ -319,7 +234,7 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
                     ['Volume', quote.volume?.toLocaleString()],
                     ['Market Cap', quote.marketCap ? (quote.marketCap > 1e12 ? (quote.marketCap/1e12).toFixed(2)+'T' : quote.marketCap > 1e9 ? (quote.marketCap/1e9).toFixed(2)+'B' : (quote.marketCap/1e6).toFixed(2)+'M') : '-'],
                     ['P/E Ratio', quote.pe?.toFixed(2)], ['EPS', quote.eps?.toFixed(2)],
-                    ['Div Yield', quote.dividendYield ? (quote.dividendYield * 100).toFixed(2) + '%' : '-'],
+                    ['Div Yield', quote.dividendYield ? quote.dividendYield.toFixed(2) + '%' : '-'], // Yahoo already reports this in percent
                   ].map(([label, val]) => (
                     <tr key={label}><td style={{ color: 'var(--text-muted)' }}>{label}</td><td style={{ textAlign: 'right', fontWeight: 600 }}>{val || '-'}</td></tr>
                   ))}
@@ -335,10 +250,6 @@ export default function Companies({ selectedSymbol, onSelectStock }) {
             />
           </div>
         </div>
-      )}
-
-      {symbol && loading && !quote && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}><div className="spinner"></div></div>
       )}
     </div>
   );

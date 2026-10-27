@@ -176,7 +176,7 @@ export default function Analysis({ selectedSymbol, onSelectStock }) {
       const quoteData = await quoteRes.json();
       const analyzeData = await analyzeRes.json();
       
-      const quotes = histData.quotes || [];
+      const quotes = (histData.bars || []).map(b => ({ ...b, date: new Date(b.time * 1000).toISOString() }));
       const q = quoteData[sym] || null;
       const currency = resolveCurrency(sym, q?.currency || histData.currency);
       setHistory(quotes);

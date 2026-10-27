@@ -216,7 +216,8 @@ export async function POST(request) {
         }
       }
 
-      const divYieldAnnual = q.trailingAnnualDividendYield || q.dividendYield || 0;
+      // trailingAnnualDividendYield is a fraction; dividendYield is in percent (0.31 = 0.31%)
+      const divYieldAnnual = q.trailingAnnualDividendYield || (q.dividendYield ? q.dividendYield / 100 : 0);
       
       // UPGRADE 2: Fama-French 3-Factor Approximation (Size & Value Premiums)
       let sizePremium = 0;
